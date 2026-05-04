@@ -1,0 +1,54 @@
+# mapping_external_to_canonical.yaml — Fifth file (SOP 2 §5.5, Annexe A).
+# Vault conventions → GhostCrab facets, schema families, and default edge labels.
+
+workspace_id: "<kebab-case-slug>"
+
+tag_to_facet_key:
+  - obsidian_tag: "décision"
+    facet_key: "tags"
+    facet_value: "decision"
+  - obsidian_tag: "tâche"
+    facet_key: "tags"
+    facet_value: "task"
+  - obsidian_tag_prefix: "status/"
+    facet_key: "status"
+    extract_suffix: true
+  - obsidian_tag_prefix: "priority/"
+    facet_key: "priority"
+    extract_suffix: true
+  - obsidian_tag_prefix: "phase/"
+    facet_key: "project_phase"
+    extract_suffix: true
+
+frontmatter_to_facet:
+  - fm_key: "client"
+    facet_key: "client_id"
+  - fm_key: "assignee"
+    facet_key: "owner"
+  - fm_key: "title"
+    facet_key: "title"
+  - fm_key: "date"
+    facet_key: "date"
+  - fm_key: "status"
+    facet_key: "status"
+
+folder_to_schema_family:
+  - folder_pattern: "decisions/**"
+    schema_family: "<workspace_id>:design-decisions"
+  - folder_pattern: "clients/**"
+    schema_family: "<workspace_id>:client-knowledge"
+  - folder_pattern: "tasks/**"
+    schema_family: "<workspace_id>:project-plan"
+  - folder_pattern: "content/**"
+    schema_family: "<workspace_id>:site-content"
+  - folder_pattern: "history/**"
+    schema_family: "<workspace_id>:project-history"
+
+wikilink_to_edge_label:
+  - source_schema_family: "<workspace_id>:design-decisions"
+    target_schema_family: "<workspace_id>:client-knowledge"
+    default_label: "OWNED_BY"
+  - source_schema_family: "<workspace_id>:project-plan"
+    target_schema_family: "<workspace_id>:design-decisions"
+    default_label: "DEPENDS_ON"
+  - default_label: "REFERENCES"

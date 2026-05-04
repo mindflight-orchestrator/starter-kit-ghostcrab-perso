@@ -1,0 +1,142 @@
+# Example schema provisioning for a website creation project.
+
+workspace_id: "website-delivery-template"
+
+ontologies:
+  - ontology_candidate: "project-brief"
+    schema_family: "website-delivery-template:project-brief"
+    schema_registrations:
+      - schema_id: "website-delivery-template:stakeholder"
+        node_type: "stakeholder"
+        label: "Stakeholder"
+        facet_keys: [title, role, organization, influence_level]
+        required_facets: [title, role]
+        projection_types_allowed: []
+      - schema_id: "website-delivery-template:objective"
+        node_type: "objective"
+        label: "Objective"
+        facet_keys: [title, success_metric, priority, status]
+        required_facets: [title]
+        projection_types_allowed: []
+      - schema_id: "website-delivery-template:requirement"
+        node_type: "requirement"
+        label: "Requirement"
+        facet_keys: [title, category, priority, source, status]
+        required_facets: [title, category]
+        projection_types_allowed: []
+    notes: "Start here. Use this family to anchor scope and traceability."
+
+  - ontology_candidate: "information-architecture"
+    schema_family: "website-delivery-template:information-architecture"
+    schema_registrations:
+      - schema_id: "website-delivery-template:page"
+        node_type: "page"
+        label: "Page"
+        facet_keys: [title, page_type, lifecycle_status, owner]
+        required_facets: [title, page_type]
+        projection_types_allowed: []
+      - schema_id: "website-delivery-template:navigation-node"
+        node_type: "navigation-node"
+        label: "Navigation Node"
+        facet_keys: [title, menu_name, order_index]
+        required_facets: [title]
+        projection_types_allowed: []
+      - schema_id: "website-delivery-template:template"
+        node_type: "template"
+        label: "Template"
+        facet_keys: [title, template_kind, status]
+        required_facets: [title]
+        projection_types_allowed: []
+    notes: "Use PART_OF and IMPLEMENTS heavily for sitemap and hierarchy."
+
+  - ontology_candidate: "site-content"
+    schema_family: "website-delivery-template:site-content"
+    schema_registrations:
+      - schema_id: "website-delivery-template:content-item"
+        node_type: "content-item"
+        label: "Content Item"
+        facet_keys: [title, content_type, status, target_page]
+        required_facets: [title, content_type]
+        projection_types_allowed: []
+      - schema_id: "website-delivery-template:seo-target"
+        node_type: "seo-target"
+        label: "SEO Target"
+        facet_keys: [title, keyword, intent, priority]
+        required_facets: [title, keyword]
+        projection_types_allowed: []
+      - schema_id: "website-delivery-template:asset"
+        node_type: "asset"
+        label: "Asset"
+        facet_keys: [title, asset_type, owner, usage_status]
+        required_facets: [title, asset_type]
+        projection_types_allowed: []
+    notes: "Attach content to pages with ANSWERS_TO or PART_OF depending on granularity."
+
+  - ontology_candidate: "design-system"
+    schema_family: "website-delivery-template:design-system"
+    schema_registrations:
+      - schema_id: "website-delivery-template:component"
+        node_type: "component"
+        label: "Component"
+        facet_keys: [title, component_type, status, platform]
+        required_facets: [title]
+        projection_types_allowed: []
+      - schema_id: "website-delivery-template:style-token"
+        node_type: "style-token"
+        label: "Style Token"
+        facet_keys: [title, token_category, value, status]
+        required_facets: [title, token_category]
+        projection_types_allowed: []
+      - schema_id: "website-delivery-template:decision"
+        node_type: "decision"
+        label: "Decision"
+        facet_keys: [title, decision_area, status, owner]
+        required_facets: [title, decision_area]
+        projection_types_allowed: [DECISION_LOG]
+    notes: "Design and UX rationale live here; relate decisions back to requirements."
+
+  - ontology_candidate: "technical-delivery"
+    schema_family: "website-delivery-template:technical-delivery"
+    schema_registrations:
+      - schema_id: "website-delivery-template:task"
+        node_type: "task"
+        label: "Task"
+        facet_keys: [title, status, phase, owner, due_date]
+        required_facets: [title, status]
+        projection_types_allowed: [TASK_BOARD]
+      - schema_id: "website-delivery-template:milestone"
+        node_type: "milestone"
+        label: "Milestone"
+        facet_keys: [title, target_date, status]
+        required_facets: [title]
+        projection_types_allowed: [MILESTONE_BRIEF]
+      - schema_id: "website-delivery-template:integration-endpoint"
+        node_type: "integration-endpoint"
+        label: "Integration Endpoint"
+        facet_keys: [title, system_name, environment, criticality]
+        required_facets: [title, system_name]
+        projection_types_allowed: []
+    notes: "Use for CMS, forms, analytics, CRM, hosting, and deployment dependencies."
+
+  - ontology_candidate: "quality-launch"
+    schema_family: "website-delivery-template:quality-launch"
+    schema_registrations:
+      - schema_id: "website-delivery-template:qa-finding"
+        node_type: "qa-finding"
+        label: "QA Finding"
+        facet_keys: [title, severity, status, environment]
+        required_facets: [title, severity]
+        projection_types_allowed: [QA_BRIEF]
+      - schema_id: "website-delivery-template:launch-check"
+        node_type: "launch-check"
+        label: "Launch Check"
+        facet_keys: [title, category, status, owner]
+        required_facets: [title, category]
+        projection_types_allowed: [LAUNCH_CHECKLIST]
+      - schema_id: "website-delivery-template:risk"
+        node_type: "risk"
+        label: "Risk"
+        facet_keys: [title, impact, likelihood, mitigation_status]
+        required_facets: [title, impact, likelihood]
+        projection_types_allowed: [RISK_REVIEW]
+    notes: "Keep launch blockers and residual risks visible even after go-live."

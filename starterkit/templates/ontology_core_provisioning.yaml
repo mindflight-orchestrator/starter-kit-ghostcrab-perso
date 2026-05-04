@@ -1,0 +1,20 @@
+# ontology_core_provisioning.yaml — Third file (SOP 2 Annexe A).
+# One entry per ontology_candidate from jtbd.yaml; each entry may require several ghostcrab_schema_register calls.
+
+workspace_id: "<kebab-case-slug>"
+
+ontologies:
+  - ontology_candidate: "<slug>"
+    schema_family: "<workspace_id>:<slug>"
+    schema_registrations:
+      - schema_id: "<workspace_id>:<entity-type>"
+        node_type: "<type>"
+        label: "<Human label>"
+        facet_keys: []
+        required_facets: []
+        projection_types_allowed: []
+    notes: "<Registration order, pivot objects, dependencies>"
+
+  # - ontology_candidate: "<another-slug>"
+  #   schema_family: "<workspace_id>:<another-slug>"
+  #   schema_registrations: [ ... ]

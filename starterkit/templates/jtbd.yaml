@@ -1,0 +1,31 @@
+# jtbd.yaml — Produce first (SOP 2 §2.2, Annexe A).
+# Source of truth for ontology candidates before any GhostCrab calls.
+
+workspace_id: "<kebab-case-slug>" # e.g. web-project-acme
+
+jtbd:
+  main_job: "<Infinitive phrase describing the primary outcome>"
+  actor: "<Primary user role / context>"
+  trigger: "<What triggers use of this vault>"
+  outcome: "<Measurable result expected>"
+
+  sub_jobs:
+    - id: SJ1
+      job: "<Sub-activity 1>"
+      ontology_candidate: "<slug>" # e.g. client-knowledge
+      schema_family: "<workspace_id>:<ontology_candidate>"
+      primary_object_types: # expected entity kinds
+        - "<type_1>"
+        - "<type_2>"
+      source_patterns: # glob patterns in the vault
+        - "clients/*.md"
+        - "briefs/*.pdf"
+
+    - id: SJ2
+      job: "<Sub-activity 2>"
+      ontology_candidate: "<slug>"
+      schema_family: "<workspace_id>:<ontology_candidate>"
+      primary_object_types: []
+      source_patterns: []
+
+  # Repeat one sub_jobs entry per major JTBD / folder family.

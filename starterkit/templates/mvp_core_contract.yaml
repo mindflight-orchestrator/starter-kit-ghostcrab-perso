@@ -1,0 +1,26 @@
+# mvp_core_contract.yaml — Second file to freeze (SOP 2 Annexe A).
+# Locks workspace scope, backend, chunking, and DDL policy before schema registration.
+
+workspace_id: "<kebab-case-slug>" # must match jtbd.yaml and ghostcrab_workspace_create
+
+backend: "postgresql" # GhostCrab MCP reference stack targets PostgreSQL only
+
+chunking_strategy: "section_logical" # e.g. section_logical | whole_file | fixed_512 — see SOP 2 §4.1
+
+ddl_authority: "strict" # e.g. strict | relaxed — who may propose Layer 1 DDL (SOP 2 §8.5)
+
+label: "<Human-readable workspace title>"
+description: "<One paragraph: vault purpose and boundaries>"
+
+# Optional: mirror SOP 2 §6.1 — declare allowed node_type values for validators / prompts (list strings).
+node_types_allowed: [] # e.g. [concept, decision, task]
+
+edge_labels_allowed:
+  - REFERENCES
+  - DEPENDS_ON
+  - ASSOCIATED_WITH
+  - OBSERVED_ON
+  - OWNED_BY
+  - LOCATED_IN
+  - PART_OF
+  - CONNECTED_TO

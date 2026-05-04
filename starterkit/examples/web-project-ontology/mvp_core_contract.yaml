@@ -1,0 +1,42 @@
+# Example MVP contract for a website creation project.
+
+workspace_id: "website-delivery-template"
+
+backend: "postgresql"
+
+chunking_strategy: "section_logical"
+
+ddl_authority: "strict"
+
+label: "Website Delivery Template"
+description: "Workspace de pilotage d'un projet de creation de site web couvrant brief, architecture de l'information, contenu, design, execution technique, QA et lancement."
+
+node_types_allowed:
+  - stakeholder
+  - objective
+  - requirement
+  - page
+  - navigation-node
+  - template
+  - content-item
+  - seo-target
+  - asset
+  - component
+  - style-token
+  - decision
+  - task
+  - milestone
+  - integration-endpoint
+  - qa-finding
+  - launch-check
+  - risk
+
+edge_labels_allowed:
+  - REFERENCES
+  - DEPENDS_ON
+  - PART_OF
+  - OWNED_BY
+  - IMPLEMENTS
+  - ANSWERS_TO
+  - BLOCKS
+  - VALIDATES

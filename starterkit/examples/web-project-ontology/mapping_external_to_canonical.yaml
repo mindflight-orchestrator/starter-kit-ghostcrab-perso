@@ -1,0 +1,65 @@
+# Example mapping for an Obsidian vault used to manage a website project.
+
+workspace_id: "website-delivery-template"
+
+tag_to_facet_key:
+  - obsidian_tag: "decision"
+    facet_key: "tags"
+    facet_value: "decision"
+  - obsidian_tag: "qa"
+    facet_key: "tags"
+    facet_value: "qa"
+  - obsidian_tag: "seo"
+    facet_key: "tags"
+    facet_value: "seo"
+  - obsidian_tag_prefix: "status/"
+    facet_key: "status"
+    extract_suffix: true
+  - obsidian_tag_prefix: "phase/"
+    facet_key: "phase"
+    extract_suffix: true
+  - obsidian_tag_prefix: "channel/"
+    facet_key: "channel"
+    extract_suffix: true
+
+frontmatter_to_facet:
+  - fm_key: "client"
+    facet_key: "client_name"
+  - fm_key: "owner"
+    facet_key: "owner"
+  - fm_key: "priority"
+    facet_key: "priority"
+  - fm_key: "status"
+    facet_key: "status"
+  - fm_key: "due"
+    facet_key: "due_date"
+  - fm_key: "page"
+    facet_key: "target_page"
+
+folder_to_schema_family:
+  - folder_pattern: "briefs/**"
+    schema_family: "website-delivery-template:project-brief"
+  - folder_pattern: "ia/**"
+    schema_family: "website-delivery-template:information-architecture"
+  - folder_pattern: "content/**"
+    schema_family: "website-delivery-template:site-content"
+  - folder_pattern: "design/**"
+    schema_family: "website-delivery-template:design-system"
+  - folder_pattern: "tech/**"
+    schema_family: "website-delivery-template:technical-delivery"
+  - folder_pattern: "qa/**"
+    schema_family: "website-delivery-template:quality-launch"
+  - folder_pattern: "launch/**"
+    schema_family: "website-delivery-template:quality-launch"
+
+wikilink_to_edge_label:
+  - source_schema_family: "website-delivery-template:site-content"
+    target_schema_family: "website-delivery-template:information-architecture"
+    default_label: "ANSWERS_TO"
+  - source_schema_family: "website-delivery-template:technical-delivery"
+    target_schema_family: "website-delivery-template:project-brief"
+    default_label: "IMPLEMENTS"
+  - source_schema_family: "website-delivery-template:quality-launch"
+    target_schema_family: "website-delivery-template:technical-delivery"
+    default_label: "VALIDATES"
+  - default_label: "REFERENCES"

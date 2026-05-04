@@ -1,0 +1,88 @@
+# Example JTBD for a website creation project.
+
+workspace_id: "website-delivery-template"
+
+jtbd:
+  main_job: "Piloter la creation et la mise en ligne d'un site web de facon fiable"
+  actor: "Chef de projet web avec contributions design, contenu et developpement"
+  trigger: "Un nouveau projet de site ou une refonte est lancee pour un client"
+  outcome: "Un site publie conforme au brief, dans les delais, avec contenu, design et suivi de lancement"
+
+  sub_jobs:
+    - id: SJ1
+      job: "Capturer le brief, les objectifs et les contraintes du projet"
+      ontology_candidate: "project-brief"
+      schema_family: "website-delivery-template:project-brief"
+      primary_object_types:
+        - "stakeholder"
+        - "objective"
+        - "requirement"
+      source_patterns:
+        - "briefs/*.md"
+        - "briefs/*.pdf"
+        - "meetings/discovery/*.md"
+
+    - id: SJ2
+      job: "Definir l'architecture de l'information et le perimetre des pages"
+      ontology_candidate: "information-architecture"
+      schema_family: "website-delivery-template:information-architecture"
+      primary_object_types:
+        - "page"
+        - "navigation-node"
+        - "template"
+      source_patterns:
+        - "ia/*.md"
+        - "sitemap/*.md"
+        - "wireframes/*.md"
+
+    - id: SJ3
+      job: "Produire et maintenir le contenu du site"
+      ontology_candidate: "site-content"
+      schema_family: "website-delivery-template:site-content"
+      primary_object_types:
+        - "content-item"
+        - "seo-target"
+        - "asset"
+      source_patterns:
+        - "content/**/*.md"
+        - "seo/*.md"
+        - "assets/**/*.md"
+
+    - id: SJ4
+      job: "Prendre les decisions de design et maintenir le systeme d'interface"
+      ontology_candidate: "design-system"
+      schema_family: "website-delivery-template:design-system"
+      primary_object_types:
+        - "component"
+        - "style-token"
+        - "decision"
+      source_patterns:
+        - "design/**/*.md"
+        - "ui/**/*.md"
+        - "decisions/design/*.md"
+
+    - id: SJ5
+      job: "Planifier et suivre l'execution technique du projet"
+      ontology_candidate: "technical-delivery"
+      schema_family: "website-delivery-template:technical-delivery"
+      primary_object_types:
+        - "task"
+        - "milestone"
+        - "integration-endpoint"
+      source_patterns:
+        - "tasks/**/*.md"
+        - "sprints/**/*.md"
+        - "tech/**/*.md"
+
+    - id: SJ6
+      job: "Verifier la qualite et preparer le lancement"
+      ontology_candidate: "quality-launch"
+      schema_family: "website-delivery-template:quality-launch"
+      primary_object_types:
+        - "qa-finding"
+        - "launch-check"
+        - "risk"
+      source_patterns:
+        - "qa/**/*.md"
+        - "launch/**/*.md"
+        - "bugs/**/*.md"

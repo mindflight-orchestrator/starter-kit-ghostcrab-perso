@@ -1,0 +1,18 @@
+# initial_referential.yaml — Fourth file (SOP 2 Annexe A).
+# Stable entities to seed before bulk parsing (SOP 2 §7.4).
+# Use ghostcrab_remember / ghostcrab_upsert per row; shapes follow MCP tool payloads.
+
+workspace_id: "<kebab-case-slug>"
+
+seeds:
+  - source_ref: "ent:<natural-key>"
+    schema_id: "<workspace_id>:<entity-type>"
+    content: "<Short stable description>"
+    facets:
+      title: "<Display title>"
+      # additional facet keys as needed
+
+  # - source_ref: "ent:another-key"
+  #   schema_id: "<workspace_id>:client"
+  #   content: "..."
+  #   facets: { ... }

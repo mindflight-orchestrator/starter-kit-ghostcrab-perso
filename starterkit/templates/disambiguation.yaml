@@ -1,0 +1,20 @@
+# disambiguation.yaml — Sixth file (SOP 2 Annexe A, §8.3).
+# Curated synonym → canonical pivot mappings; maintain manually — LLM must not edit this file.
+
+workspace_id: "<kebab-case-slug>"
+
+synonym_groups:
+  - canonical: "ent:<natural-key>"
+    synonyms:
+      - "<surface form 1>"
+      - "<surface form 2>"
+    notes: "<Why these collapse to the same entity>"
+
+  # - canonical: "ent:another"
+  #   synonyms: ["Customer", "client", "compte client"]
+  #   notes: "..."
+
+ambiguous_flags:
+  - pattern: "<regex or literal note title fragment>"
+    action: "flag_for_human" # or map_to: "ent:..."
+    rationale: "<When the LLM should not auto-resolve>"

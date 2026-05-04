@@ -1,0 +1,27 @@
+# Example disambiguation rules for a website creation project.
+
+workspace_id: "website-delivery-template"
+
+synonym_groups:
+  - canonical: "ent:project-sponsor"
+    synonyms:
+      - "Sponsor"
+      - "Client sponsor"
+      - "Decision maker"
+    notes: "Use one canonical stakeholder for approval authority."
+
+  - canonical: "ent:homepage"
+    synonyms:
+      - "Home"
+      - "Accueil"
+      - "Page d'accueil"
+    notes: "All refer to the same top-level page."
+
+ambiguous_flags:
+  - pattern: "landing page"
+    action: "flag_for_human"
+    rationale: "Can refer either to the homepage or to a campaign-specific landing page."
+
+  - pattern: "brief"
+    action: "flag_for_human"
+    rationale: "Can point to the master client brief, a content brief, or a creative brief."

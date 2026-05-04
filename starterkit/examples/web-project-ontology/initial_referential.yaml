@@ -1,0 +1,50 @@
+# Example stable seeds for a website creation project.
+
+workspace_id: "website-delivery-template"
+
+seeds:
+  - source_ref: "ent:project-sponsor"
+    schema_id: "website-delivery-template:stakeholder"
+    content: "Decision-maker who validates scope, budget, and launch readiness."
+    facets:
+      title: "Project Sponsor"
+      role: "sponsor"
+
+  - source_ref: "ent:editorial-lead"
+    schema_id: "website-delivery-template:stakeholder"
+    content: "Owner of messaging, content quality, and editorial approvals."
+    facets:
+      title: "Editorial Lead"
+      role: "content-owner"
+
+  - source_ref: "ent:homepage"
+    schema_id: "website-delivery-template:page"
+    content: "Primary entry page presenting value proposition and navigation to the main journeys."
+    facets:
+      title: "Homepage"
+      page_type: "landing"
+      lifecycle_status: "planned"
+
+  - source_ref: "ent:global-header"
+    schema_id: "website-delivery-template:component"
+    content: "Reusable top navigation component shared by core pages."
+    facets:
+      title: "Global Header"
+      component_type: "navigation"
+      status: "planned"
+
+  - source_ref: "ent:go-live"
+    schema_id: "website-delivery-template:milestone"
+    content: "Target milestone for publishing the website in production."
+    facets:
+      title: "Go Live"
+      status: "draft"
+
+  - source_ref: "ent:launch-risk-content-delay"
+    schema_id: "website-delivery-template:risk"
+    content: "Late delivery of approved content can block QA and production launch."
+    facets:
+      title: "Content approval delay"
+      impact: "high"
+      likelihood: "medium"
+      mitigation_status: "open"
