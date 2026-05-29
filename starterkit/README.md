@@ -68,6 +68,20 @@ mindbrain-starterkit/
 │   ├── source_profile.yaml
 │   ├── consumer_contract.yaml
 │   └── import_manifest.yaml
+├── scripts/
+│   ├── profile_source.mjs
+│   ├── validate_source_profile.mjs
+│   ├── export_model_contract.mjs
+│   ├── validate_mapping_contract.mjs
+│   ├── transform_source_to_jsonb.mjs
+│   ├── write_pending_files.mjs
+│   ├── import_facets.mjs
+│   ├── materialize_graph_from_edges.mjs
+│   ├── generate_copy_migrations.mjs
+│   ├── validate_graph_contract.mjs
+│   ├── validate_consumer_contract.mjs
+│   ├── update_syncstate.mjs
+│   └── audit_import_pipeline.mjs
 ├── claude-code/
 │   └── CLAUDE.md                      ← Claude Code entrypoint rule
 ├── cursor/

@@ -152,6 +152,24 @@ Sequence:
 6. Import facets, materialize graph if required, test projections, then test consumers.
 7. Record the run in `templates/import_manifest.yaml` or a project-local copy.
 
+Starter scripts:
+
+```bash
+node scripts/profile_source.mjs --help
+node scripts/validate_source_profile.mjs --help
+node scripts/export_model_contract.mjs --help
+node scripts/validate_mapping_contract.mjs --help
+node scripts/transform_source_to_jsonb.mjs --help
+node scripts/write_pending_files.mjs --help
+node scripts/import_facets.mjs --help
+node scripts/materialize_graph_from_edges.mjs --help
+node scripts/generate_copy_migrations.mjs --help
+node scripts/validate_graph_contract.mjs --help
+node scripts/validate_consumer_contract.mjs --help
+node scripts/update_syncstate.mjs --help
+node scripts/audit_import_pipeline.mjs --help
+```
+
 **Phase C2 is done when:** the manifest shows no blocking exceptions and every declared consumer passes its smoke tests.
 
 ---

@@ -274,16 +274,25 @@ Ne pas creer automatiquement un nouveau schema pour une ligne qui echappe aux re
 
 ---
 
-## Section 5 — Harnais de scripts recommande
+## Section 5 — Harnais de scripts
 
-Le starterkit peut fournir ou generer ces scripts dans un projet cible:
+Le starterkit fournit un harnais dry-run minimal dans `scripts/`.
+
+Un agent peut les copier dans un projet cible et les specialiser, mais ils doivent deja servir de reference executable:
 
 ```text
 scripts/profile_source.mjs
+scripts/validate_source_profile.mjs
+scripts/export_model_contract.mjs
 scripts/validate_mapping_contract.mjs
 scripts/transform_source_to_jsonb.mjs
+scripts/write_pending_files.mjs
 scripts/import_facets.mjs
 scripts/materialize_graph_from_edges.mjs
+scripts/generate_copy_migrations.mjs
+scripts/validate_graph_contract.mjs
+scripts/validate_consumer_contract.mjs
+scripts/update_syncstate.mjs
 scripts/audit_import_pipeline.mjs
 ```
 
@@ -294,6 +303,24 @@ Contrat minimal:
 - aucun script ne doit ecrire dans GhostCrab sans mode explicite `--write`;
 - le mode par defaut est dry-run;
 - les scripts doivent echouer sur references non resolues, labels inconnus, ou facets requises manquantes.
+
+Commandes de verification:
+
+```bash
+node scripts/profile_source.mjs --help
+node scripts/validate_source_profile.mjs --help
+node scripts/export_model_contract.mjs --help
+node scripts/validate_mapping_contract.mjs --help
+node scripts/transform_source_to_jsonb.mjs --help
+node scripts/write_pending_files.mjs --help
+node scripts/import_facets.mjs --help
+node scripts/materialize_graph_from_edges.mjs --help
+node scripts/generate_copy_migrations.mjs --help
+node scripts/validate_graph_contract.mjs --help
+node scripts/validate_consumer_contract.mjs --help
+node scripts/update_syncstate.mjs --help
+node scripts/audit_import_pipeline.mjs --help
+```
 
 ---
 
