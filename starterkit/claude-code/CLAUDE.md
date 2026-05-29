@@ -37,10 +37,24 @@ Critical: use the **same `DATABASE_URL`** for COPY ingestion as the one configur
 
 Target: `ghostcrab_coverage` ≥ 80% on core schemas before declaring Phase C complete.
 
+## Phase C2 — Compile external sources
+
+For CSV/API/JSON/app exports, load `SOP5_source_import_compiler.md`.
+
+Use the generic templates in `../templates/`:
+
+1. `source_profile.yaml`
+2. `mapping_external_to_canonical.yaml`
+3. `consumer_contract.yaml`
+4. `import_manifest.yaml`
+
+Default to dry-run. Do not write data until the source profile, target model, mapping, and consumer contract are coherent. If a consumer requires a graph viewer, materialize native graph rows and test the declared consumer checks before declaring the import complete.
+
 ## Key constraints
 
 - Read before write: always `ghostcrab_count` → `ghostcrab_search` → `ghostcrab_pack` before any write.
 - MCP is not a hot-path: bulk ingestion goes through direct SQL (COPY), never through `ghostcrab_remember` in a loop.
+- Non-Obsidian imports follow SOP5: source profile → target model → mapping → dry-run JSONB → review exceptions → facets → graph if required → projections → consumers.
 - `schema_id` must be namespaced: `<workspace_id>:<entity_type>`.
 - Edge labels must use `UPPER_SNAKE_CASE` (e.g. `DEPENDS_ON`, not `dependsOn` or `DEPENDSON`).
 - End each meaningful phase with a checkpoint: `ghostcrab_project` with `note_kind: "checkpoint"`.

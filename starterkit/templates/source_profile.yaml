@@ -1,0 +1,55 @@
+# source_profile.yaml — Source inventory before mapping (SOP5).
+# Fill this before editing mapping_external_to_canonical.yaml for CSV/API/JSON/app exports.
+
+workspace_id: "<kebab-case-slug>"
+
+source:
+  id: "<source-slug>"
+  kind: "csv" # csv | json | jsonl | api | directory | database_export | other
+  path: "<relative-or-absolute-path-or-endpoint>"
+  encoding: "utf-8"
+  delimiter: "," # csv only
+  owner: "<person-or-system>"
+  exported_at: "<ISO-8601-or-empty>"
+
+shape:
+  row_count: null
+  object_paths: [] # json/api only, e.g. ["$.data.items[*]"]
+  headers: [] # csv only
+  sample_records:
+    - {}
+
+identity_candidates:
+  - field: "<source-field-or-json-path>"
+    uniqueness: "unknown" # unique | mostly_unique | duplicate | unknown
+    stability: "unknown" # stable | derived | unstable | unknown
+    notes: "<why this can or cannot become record_id>"
+
+field_inventory:
+  - source_field: "<column-or-json-path>"
+    observed_type: "string" # string | number | boolean | date | enum | object | array | mixed | unknown
+    null_rate: null
+    example_values: []
+    classification: "unmapped" # mapped | derived | relation_candidate | ignored | pending_review | unmapped
+    target_hint: "<facet-or-entity-or-edge-hint>"
+    notes: ""
+
+detected_enums:
+  - field: "<source-field>"
+    values: []
+    target_enum_hint: "<target-enum-name>"
+
+relation_candidates:
+  - source_field: "<field-containing-reference>"
+    source_entity_hint: "<source-entity-type>"
+    target_entity_hint: "<target-entity-type>"
+    resolution_strategy: "record_id_formula" # record_id_formula | lookup_table | disambiguation | human_review
+    notes: ""
+
+ignored_fields:
+  - source_field: "<field>"
+    reason: "<why it is intentionally ignored>"
+
+profiling_warnings:
+  - code: "<warning-code>"
+    message: "<human-readable warning>"

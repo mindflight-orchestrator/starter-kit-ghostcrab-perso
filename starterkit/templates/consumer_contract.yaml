@@ -1,0 +1,54 @@
+# consumer_contract.yaml — Downstream readiness contract (SOP5).
+# Declare what must work after import. Do not infer readiness from GhostCrab pack alone.
+
+workspace_id: "<kebab-case-slug>"
+
+consumers:
+  - name: "ghostcrab-agent"
+    kind: "mcp-agent" # mcp-agent | graph-viewer | report | api | custom
+    requires:
+      facets: true
+      projections: true
+      native_graph: false
+    checks:
+      - id: "search-core-record"
+        type: "ghostcrab_search"
+        query: "<query expected to return imported records>"
+        expected_min_results: 1
+      - id: "pack-active-scope"
+        type: "ghostcrab_pack"
+        scope: "<workspace-or-projection-scope>"
+        expected_contains: []
+
+  - name: "sigma-graphology"
+    kind: "graph-viewer"
+    requires:
+      facets: false
+      projections: false
+      native_graph: true
+      tables:
+        - "graph_entity"
+        - "graph_relation"
+    checks:
+      - id: "graph-ontologies"
+        type: "http"
+        path: "/api/graph/ontologies"
+        expected:
+          entityCount_gt: 0
+      - id: "graph-count"
+        type: "http"
+        path: "/api/graph/count"
+        expected:
+          nodeCount_gt: 0
+          edgeCount_gt: 0
+      - id: "graph-payload"
+        type: "http"
+        path: "/api/graph"
+        expected:
+          nodes_gt: 0
+          edges_gt: 0
+
+readiness_rules:
+  - "Every consumer with native_graph=true must pass graph node and edge count checks."
+  - "A successful ghostcrab_pack check does not prove graph-viewer readiness."
+  - "Consumer-specific failures must be logged as pending_review reason code consumer_gap."

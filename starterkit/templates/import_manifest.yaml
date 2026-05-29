@@ -1,0 +1,53 @@
+# import_manifest.yaml — Final audit record for one source import run (SOP5).
+
+workspace_id: "<kebab-case-slug>"
+run_id: "<YYYYMMDD-HHMMSS-source-slug>"
+status: "draft" # draft | dry_run_passed | imported | consumer_validated | failed
+
+runtime:
+  ghostcrab_runtime: "<perso-or-pro-or-product-runtime>"
+  backend: "<postgresql-or-sqlite-or-other>"
+  database_identity: "<dsn-or-sqlite-path-or-redacted>"
+  verified_at: "<ISO-8601>"
+
+inputs:
+  source_profile: "templates/source_profile.yaml"
+  target_model_contract: "<exported-model-or-local-contract-path>"
+  mapping_contract: "templates/mapping_external_to_canonical.yaml"
+  disambiguation: "templates/disambiguation.yaml"
+  consumer_contract: "templates/consumer_contract.yaml"
+
+outputs:
+  normalized_records: "output/normalized_records.jsonl"
+  normalized_edges: "output/normalized_edges.jsonl"
+  pending_review: "output/pending_review.json"
+  pending_ddl: "output/pending_ddl.json"
+  syncstate: "output/syncstate.json"
+
+counts:
+  source_records: null
+  normalized_records: null
+  normalized_edges: null
+  pending_review: null
+  pending_ddl: null
+  imported_facets: null
+  graph_nodes: null
+  graph_edges: null
+
+commands:
+  - step: "<step-name>"
+    command: "<command-or-mcp-call-summary>"
+    exit_status: null
+    report_path: "<optional-report-path>"
+
+exceptions:
+  blocking: []
+  reviewed: []
+  deferred: []
+
+consumer_results:
+  - consumer: "<consumer-name>"
+    status: "not_run" # not_run | passed | failed | skipped
+    report_path: "<optional-report-path>"
+
+notes: ""

@@ -8,6 +8,12 @@
 
 This starterkit is a **companion repo** to the [GhostCrab MCP server](https://gitlab.com/webigniter/ghostcrab.git). It provides agent-loadable SOPs, templates, and IDE entrypoints for setting up a GhostCrab-backed project.
 
+Download:
+
+```bash
+git clone https://gitlab.com/webigniter/starter-kit-ghostcrab-perso.git ~/mindbrain-starterkit
+```
+
 **Required before using this starterkit:**
 
 - GhostCrab MCP server installed and running → see [GhostCrab README](../README.md) for full installation steps
@@ -41,7 +47,7 @@ If any of these prerequisites fail, **stop here** and complete Phase A (SOP4) be
 ```
 Phase A — Verify GhostCrab MCP    →  SOP4_environment_bootstrap.md
 Phase B — Model the project        →  SOP1_ghostcrab_mcp.md + SOP2_obsidian_ontologie.md
-Phase C — Parse and ingest files   →  SOP2_obsidian_ontologie.md §7 + SOP3_parsing_pipeline.md
+Phase C — Parse and ingest files   →  SOP2_obsidian_ontologie.md §7 + SOP3_parsing_pipeline.md or SOP5_source_import_compiler.md
 ```
 
 ---
@@ -130,6 +136,24 @@ Sequence:
 
 **Phase C is done when:** `ghostcrab_coverage` reports ≥ 80% coverage on core schemas declared in `mvp_core_contract.yaml`.
 
+## Phase C2 — Compile External Sources
+
+**Load:** `SOP5_source_import_compiler.md`
+
+**Goal:** compile CSV/API/JSON/app exports into validated GhostCrab records without hard-coding a project-specific pipeline.
+
+Sequence:
+
+1. Fill `templates/source_profile.yaml` from the real source.
+2. Export or load the target model contract.
+3. Extend `templates/mapping_external_to_canonical.yaml` with record id, facets, enum maps, and edge rules.
+4. Fill `templates/consumer_contract.yaml` before writing data, especially if a graph viewer is expected.
+5. Dry-run into JSONB intermediate records and review `pending_review.json` / `pending_ddl.json`.
+6. Import facets, materialize graph if required, test projections, then test consumers.
+7. Record the run in `templates/import_manifest.yaml` or a project-local copy.
+
+**Phase C2 is done when:** the manifest shows no blocking exceptions and every declared consumer passes its smoke tests.
+
 ---
 
 ## SOP Reference
@@ -140,6 +164,7 @@ Sequence:
 | SOP1 | B — MCP architecture & DB contract | `SOP1_ghostcrab_mcp.md` |
 | SOP2 | B+C — Ontology modeling + injection | `SOP2_obsidian_ontologie.md` |
 | SOP3 | C — Parsing pipeline | `SOP3_parsing_pipeline.md` |
+| SOP5 | C — Generic source import compiler | `SOP5_source_import_compiler.md` |
 
 ## Template Reference
 
@@ -151,6 +176,9 @@ Sequence:
 | Initial Referential | Phase B | `templates/initial_referential.yaml` |
 | Mapping External → Canonical | Phase B | `templates/mapping_external_to_canonical.yaml` |
 | Disambiguation | Phase B | `templates/disambiguation.yaml` |
+| Source Profile | Phase C2 | `templates/source_profile.yaml` |
+| Consumer Contract | Phase C2 | `templates/consumer_contract.yaml` |
+| Import Manifest | Phase C2 | `templates/import_manifest.yaml` |
 
 ---
 

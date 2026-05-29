@@ -4,11 +4,12 @@
 
 ## What this skill does
 
-Guides you through the 3-phase GhostCrab MCP workflow:
+Guides you through the GhostCrab MCP workflow:
 
 - **Phase A** — verify the GhostCrab MCP environment is running correctly
 - **Phase B** — accompany the user from vault understanding to ontology decisions (workspace, schemas, DDL)
 - **Phase C** — parse vault files and ingest into PostgreSQL
+- **Phase C2** — compile CSV/API/JSON/app exports into validated GhostCrab records
 
 ## How to use this skill
 
@@ -16,6 +17,7 @@ Guides you through the 3-phase GhostCrab MCP workflow:
 2. Determine which phase to start with (default: Phase A).
 3. Load the appropriate SOP from the parent directory.
 4. Follow the SOP step by step, using the templates in `../templates/`.
+5. For non-Obsidian sources, load `../SOP5_source_import_compiler.md` and start from `../templates/source_profile.yaml`.
 
 ## SOP files (load as needed)
 
@@ -23,6 +25,7 @@ Guides you through the 3-phase GhostCrab MCP workflow:
 - `../SOP1_ghostcrab_mcp.md` — Phase B (architecture + DB contract)
 - `../SOP2_obsidian_ontologie.md` — Phase B + C (ontology + injection)
 - `../SOP3_parsing_pipeline.md` — Phase C (parsing pipeline)
+- `../SOP5_source_import_compiler.md` — Phase C2 (CSV/API/JSON/app export compiler)
 
 ## Key rules (always enforce)
 
@@ -33,6 +36,8 @@ Guides you through the 3-phase GhostCrab MCP workflow:
 - Before proposing schemas, accompany the user through these questions: what the vault is used for in practice, who uses it, which retrieval jobs matter, which note families map to distinct jobs, and whether one working view or several are needed.
 - Read before write: count → search → pack before any write.
 - MCP is not a bulk ingestion path — use SQL COPY for volume.
+- External imports are not project-specific by default: produce `source_profile.yaml`, `mapping_external_to_canonical.yaml`, `consumer_contract.yaml`, and `import_manifest.yaml`.
+- If a consumer needs a graph viewer, require native graph materialization and endpoint/count smoke tests.
 - `schema_id` format: `<workspace_id>:<entity_type>`.
 - Graph edge labels: `UPPER_SNAKE_CASE`.
 - Same `DATABASE_URL` for MCP server, migrations, and COPY ingestion.
