@@ -8,6 +8,7 @@ Companion kit for [GhostCrab MCP](https://gitlab.com/webigniter/ghostcrab). Load
 
 This starterkit provides:
 
+- **SOP0** — Import path choices (LinkML vs MCP ontology; structured-import CLI vs SOP5 scripts)
 - **SOP4** — Phase A environment verification (is GhostCrab MCP running correctly?)
 - **SOP1** — MCP architecture and database contract (Phase B)
 - **SOP2** — Ontology modeling from an Obsidian vault (Phase B + Phase C)
@@ -43,7 +44,7 @@ This kit does **not** replace or modify GhostCrab MCP. It is the reference you u
    git clone https://gitlab.com/webigniter/starter-kit-ghostcrab-perso.git ~/mindbrain-starterkit
    ```
 2. Open `QUICKSTART.md` in your agent. It tells the agent which SOP to load at each phase.
-3. The agent starts with Phase A (SOP4), then moves to Phase B (SOP1 + SOP2), then Phase C (SOP3).
+3. The agent starts with Phase A (SOP4), then Phase B0 (SOP0), then Phase B (SOP1 + SOP2), then Phase C / C2.
 
 ---
 
@@ -52,7 +53,8 @@ This kit does **not** replace or modify GhostCrab MCP. It is the reference you u
 ```
 mindbrain-starterkit/
 ├── README.md                          ← This file
-├── QUICKSTART.md                      ← Agent entrypoint: 3-phase checklist + SOP pointers
+├── QUICKSTART.md                      ← Agent entrypoint: phased checklist + SOP pointers
+├── SOP0_import_path_choices.md        ← B0/C2.0: LinkML vs MCP; CLI vs scripts
 ├── SOP4_environment_bootstrap.md      ← Phase A: verify Docker, migrations, smoke test, MCP client
 ├── SOP1_ghostcrab_mcp.md              ← Phase B: MCP tools, DB contract, DDL lifecycle
 ├── SOP2_obsidian_ontologie.md         ← Phase B+C: ontology modeling + injection sequence
@@ -67,7 +69,9 @@ mindbrain-starterkit/
 │   ├── disambiguation.yaml
 │   ├── source_profile.yaml
 │   ├── consumer_contract.yaml
-│   └── import_manifest.yaml
+│   ├── import_manifest.yaml
+│   ├── import_path_choices.yaml
+│   └── linkml_ontology.stub.yaml
 ├── scripts/
 │   ├── profile_source.mjs
 │   ├── validate_source_profile.mjs
@@ -95,9 +99,12 @@ mindbrain-starterkit/
 ## The 3-phase workflow
 
 ```
-Phase A — Verify GhostCrab MCP    →  SOP4_environment_bootstrap.md
-Phase B — Model the project        →  SOP1 + SOP2
-Phase C — Parse and ingest files   →  SOP2 §7 + SOP3 or SOP5
+Phase A — Verify GhostCrab MCP    →  SOP4
+Phase B0 — Choose ontology path   →  SOP0
+Phase B — Model the project        →  SOP1 + SOP2 (§6 bis LinkML or §7 MCP)
+Phase C — Parse and ingest         →  SOP2 + SOP3 or SOP5
+Phase C2.0 — Choose tabular path  →  SOP0
+Phase C2 — Tabular import          →  SOP5 §1 bis or §3
 ```
 
 See `QUICKSTART.md` for the detailed checklist and success signals per phase.

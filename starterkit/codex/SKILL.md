@@ -7,20 +7,24 @@
 Guides you through the GhostCrab MCP workflow:
 
 - **Phase A** — verify the GhostCrab MCP environment is running correctly
-- **Phase B** — accompany the user from vault understanding to ontology decisions (workspace, schemas, DDL)
-- **Phase C** — parse vault files and ingest into PostgreSQL
+- **Phase B0** — choose ontology path (LinkML default vs MCP incremental) via `SOP0_import_path_choices.md`
+- **Phase B** — accompany the user from vault understanding to ontology decisions (workspace, schemas, DDL, or LinkML compile)
+- **Phase C** — parse vault files and ingest into PostgreSQL (or Personal equivalents)
+- **Phase C2.0** — choose tabular path (structured-import CLI vs SOP5 scripts)
 - **Phase C2** — compile CSV/API/JSON/app exports into validated GhostCrab records
 
 ## How to use this skill
 
 1. On activation, read `../QUICKSTART.md` to understand the full 3-phase workflow.
 2. Determine which phase to start with (default: Phase A).
-3. Load the appropriate SOP from the parent directory.
-4. Follow the SOP step by step, using the templates in `../templates/`.
-5. For non-Obsidian sources, load `../SOP5_source_import_compiler.md` and start from `../templates/source_profile.yaml`.
+3. After Phase A, load `SOP0_import_path_choices.md` before Phase B writes.
+4. Load the appropriate SOP from the parent directory.
+5. Follow the SOP step by step, using the templates in `../templates/`.
+6. Before Phase C2 tabular work, confirm tabular path in `import_path_choices.yaml`.
 
 ## SOP files (load as needed)
 
+- `../SOP0_import_path_choices.md` — B0 + C2.0 import path choices
 - `../SOP4_environment_bootstrap.md` — Phase A
 - `../SOP1_ghostcrab_mcp.md` — Phase B (architecture + DB contract)
 - `../SOP2_obsidian_ontologie.md` — Phase B + C (ontology + injection)
@@ -36,7 +40,10 @@ Guides you through the GhostCrab MCP workflow:
 - Before proposing schemas, accompany the user through these questions: what the vault is used for in practice, who uses it, which retrieval jobs matter, which note families map to distinct jobs, and whether one working view or several are needed.
 - Read before write: count → search → pack before any write.
 - MCP is not a bulk ingestion path — use SQL COPY for volume.
-- External imports are not project-specific by default: produce `source_profile.yaml`, `mapping_external_to_canonical.yaml`, `consumer_contract.yaml`, and `import_manifest.yaml`.
+- Before Phase B ontology writes, load SOP0 and present LinkML (default) vs MCP incremental; record in `import_path_choices.yaml`.
+- LinkML path: LLM generates `ontology/core.yaml`, dry-run `gcp brain ontology compile`, confirm, then `--import-db`.
+- Tabular Personal default: `gcp brain structured-import`; alternative: SOP5 scripts (Voie A).
+- External imports produce `source_profile.yaml`, `mapping_external_to_canonical.yaml`, `consumer_contract.yaml`, `import_manifest.yaml`.
 - If a consumer needs a graph viewer, require native graph materialization and endpoint/count smoke tests.
 - `schema_id` format: `<workspace_id>:<entity_type>`.
 - Graph edge labels: `UPPER_SNAKE_CASE`.

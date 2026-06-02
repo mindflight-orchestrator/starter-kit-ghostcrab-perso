@@ -1,0 +1,24 @@
+# import_path_choices.yaml — Record explicit import path decisions (SOP0).
+# Fill before Phase B ontology work and before Phase C2 tabular import.
+
+workspace_id: "<kebab-case-slug>"
+recorded_at: "<ISO-8601>"
+recorded_by: "<agent-or-operator>"
+
+ontology_path:
+  # linkml (default recommended) | mcp_incremental
+  choice: "linkml"
+  confirmed_at: "<ISO-8601>"
+  notes: "<why this path was chosen>"
+
+tabular_path:
+  # structured_import_cli (default recommended for Personal SQLite) | sop5_compiler
+  choice: "structured_import_cli"
+  confirmed_at: null
+  notes: ""
+
+# Optional: paths to generated artefacts per choice
+artefacts:
+  linkml_ontology: "ontology/core.yaml"
+  ontology_compile_slice: "output/ontology-slice.json"
+  import_manifest: "templates/import_manifest.yaml"

@@ -19,9 +19,13 @@ Run through the Phase A checklist:
 
 **Do not proceed to Phase B until all Phase A checkpoints pass.**
 
+## Phase B0 — Choose ontology import path
+
+Load `SOP0_import_path_choices.md`. Present LinkML (default) vs MCP incremental. Record in `templates/import_path_choices.yaml`.
+
 ## Phase B — Model the project
 
-Load `SOP1_ghostcrab_mcp.md` then `SOP2_obsidian_ontologie.md`.
+Load `SOP1_ghostcrab_mcp.md` then `SOP2_obsidian_ontologie.md` (§6 bis LinkML or §7 Voie A MCP per B0).
 
 Sequence: JTBD → workspace → schema registration → DDL → workspace inspect → coverage baseline.
 
@@ -31,15 +35,19 @@ Use templates in `../templates/` as starter files. Never hallucinate field names
 
 ## Phase C — Parse and ingest
 
-Load `SOP2_obsidian_ontologie.md` §7 (injection sequence) then `SOP3_parsing_pipeline.md`.
+Load `SOP2_obsidian_ontologie.md` §7 Voie A or §6 bis + `SOP3_parsing_pipeline.md`.
 
 Critical: use the **same `DATABASE_URL`** for COPY ingestion as the one configured in the GhostCrab MCP server. Never use a different DSN.
 
 Target: `ghostcrab_coverage` ≥ 80% on core schemas before declaring Phase C complete.
 
+## Phase C2.0 — Choose tabular import path
+
+Load `SOP0_import_path_choices.md` §4. Present structured-import CLI (default Personal) vs SOP5 scripts. Record in `import_path_choices.yaml`.
+
 ## Phase C2 — Compile external sources
 
-For CSV/API/JSON/app exports, load `SOP5_source_import_compiler.md`.
+For CSV/API/JSON/app exports, load `SOP5_source_import_compiler.md` (§1 bis or §3 Voie A per C2.0).
 
 Use the generic templates in `../templates/`:
 

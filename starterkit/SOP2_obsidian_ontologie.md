@@ -10,6 +10,7 @@
 
 ### 1.1 Ce que cette SOP couvre
 
+- Le choix de voie d'import ontologique (voir `SOP0_import_path_choices.md` : LinkML défaut vs MCP incrémental).
 - L'analyse d'un vault Obsidian (`.md` + `.pdf`) pour en extraire le matériel ontologique.
 - La formalisation des JTBD du vault en ontologies candidates.
 - La stratégie de parsing, de chunking et d'enrichissement LLM.
@@ -441,7 +442,68 @@ edge labels     → note:decisions-cms-choice DEPENDS_ON ent:cms-headless
 
 ---
 
-## Section 7 — Séquence d'injection dans GhostCrab MCP
+## Section 6 bis — Voie B : LinkML (format par défaut)
+
+> **Prérequis :** Phase B0 complétée — choix `linkml` enregistré dans `templates/import_path_choices.yaml` (voir `SOP0_import_path_choices.md`). Ne pas utiliser cette section si l'utilisateur a choisi la voie MCP incrémentale (section 7).
+
+Cette voie enregistre l'ontologie comme artefact LinkML versionné, compilé et importé via le CLI MindBrain. Le LLM **génère** et **valide** le fichier ; l'import DB n'a lieu qu'après confirmation explicite.
+
+### 6 bis.1 Artefacts
+
+| Fichier | Rôle |
+|---------|------|
+| `templates/linkml_ontology.stub.yaml` | Squelette de départ |
+| `ontology/core.yaml` | Ontologie domaine générée par le LLM |
+| `output/ontology-slice.json` | Sortie dry-run compile (inspection) |
+
+Références canoniques (Personal) : `ghostcrab-personal-mcp/ontologies/immeuble-demo/core.yaml`, `ontologies/ghostcrab/profile.yaml`.
+
+### 6 bis.2 Séquence
+
+1. Compléter `jtbd.yaml` et obtenir confirmation du Model Proposal (identique voie A).
+2. Copier `templates/linkml_ontology.stub.yaml` vers `ontology/core.yaml`.
+3. Le LLM étend le stub : classes, enums, slots, annotations `ghostcrab.native_entity_type` / `ghostcrab.native_edge_type`.
+4. **Validation dry-run** (obligatoire, sans écriture DB) :
+   ```bash
+   gcp brain ontology compile \
+     --workspace-id <workspace_id> \
+     --ontology-id <workspace_id>::core \
+     --input ontology/core.yaml \
+     --output output/ontology-slice.json
+   ```
+5. Corriger `core.yaml` jusqu'à exit 0 ; vérifier cohérence JTBD ↔ classes/enums/relations.
+6. Présenter le résumé ontologique à l'utilisateur et obtenir confirmation.
+7. **Import** :
+   ```bash
+   gcp brain ontology compile \
+     --workspace-id <workspace_id> \
+     --ontology-id <workspace_id>::core \
+     --input ontology/core.yaml \
+     --import-db --force
+   ```
+8. Vérification post-import : `ghostcrab_schema_list`, `ghostcrab_schema_inspect`, `ghostcrab_coverage`.
+
+### 6 bis.3 Variante avancée (non défaut)
+
+OWL/N-Triples normalisés :
+
+```bash
+gcp brain ontology import \
+  --workspace-id <workspace_id> \
+  --ontology-id <workspace_id>::owl \
+  --input ./ontology.nt \
+  --materialize-graph
+```
+
+### 6 bis.4 Alternative historique
+
+Pour l'enregistrement progressif via MCP (`ghostcrab_schema_register`, `remember`, `upsert`, `learn`), voir **section 7 — Voie A**.
+
+---
+
+## Section 7 — Voie A : injection MCP incrémentale dans GhostCrab MCP
+
+> **Prérequis :** Phase B0 complétée — choix `mcp_incremental` enregistré dans `templates/import_path_choices.yaml`. Pour la voie LinkML par défaut, voir section 6 bis.
 
 ### 7.1 Vue d'ensemble
 

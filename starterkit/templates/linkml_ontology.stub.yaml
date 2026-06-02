@@ -1,0 +1,46 @@
+# linkml_ontology.stub.yaml — Minimal LinkML skeleton for SOP2 Voie B (SOP0 default).
+# Copy to ontology/core.yaml and extend from JTBD + Model Proposal.
+# Canonical reference: ghostcrab-personal-mcp/ontologies/immeuble-demo/core.yaml
+
+id: https://example.org/ontology/<workspace-id>/core
+name: <workspace_id>_core
+title: "<Human-readable ontology title>"
+description: "<One paragraph: domain scope and retrieval jobs>"
+license: https://ghostcrab.be/Licence.md
+version: 0.1.0
+
+prefixes:
+  linkml: https://w3id.org/linkml/
+  ghostcrab: https://ghostcrab.be/ontology/
+  domain: https://example.org/ontology/<workspace-id>/
+
+imports:
+  - linkml:types
+  # When compiling inside ghostcrab-personal-mcp, use the bundled profile path:
+  # - ../ghostcrab/profile.yaml
+  # In a standalone project, vendor or copy ghostcrab/profile.yaml locally.
+
+default_prefix: domain
+default_range: string
+
+enums:
+  ExampleStatus:
+    description: Replace with domain-specific lifecycle or classification values.
+    permissible_values:
+      draft:
+      active:
+      closed:
+
+classes:
+  ExampleEntity:
+    description: Replace with a pivot entity type from the Model Proposal.
+    annotations:
+      ghostcrab.native_entity_type: example_entity
+      ghostcrab.layer: structure
+
+slots:
+  has_example_relation:
+    description: Replace with a typed relation from the Model Proposal.
+    range: ExampleEntity
+    annotations:
+      ghostcrab.native_edge_type: HAS_EXAMPLE_RELATION

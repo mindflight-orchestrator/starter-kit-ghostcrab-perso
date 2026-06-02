@@ -36,7 +36,7 @@ If any of these prerequisites fail, **stop here** and complete Phase A (SOP4) be
 
 > **Modeling gate:** before proposing any domain model, entity list, schema family, or ontology structure, the agent must first confirm that GhostCrab MCP is actually reachable from the current session. Minimum check: GhostCrab tools visible in the client, then call `ghostcrab_status`. If the server is configured in settings but not exposed in the current session, do **not** present a model as MCP-validated. Stay in diagnostic mode, explain the gap clearly, and stop before Phase B writes or schema proposals.
 
-> **Storage note:** This workflow targets **PostgreSQL only**. SQLite is not supported in the current GhostCrab MCP stack (`src/` contains no SQLite implementation). Do not generate SQLite migration scripts.
+> **Storage note:** The Pro reference stack targets **PostgreSQL** (Docker). For **Personal SQLite** (`ghostcrab-personal-mcp`), use `SOP0_import_path_choices.md` and `SOP5` Gate 0 / section 1 bis — do not generate PostgreSQL COPY scripts on SQLite. See `ghostcrab-personal-mcp/docs/explanation/methode-starterkit/04-ecarts-starterkit-personal.md`.
 
 > **Tool limitation — ghostcrab_delete:** The V1 MCP server does not expose a `ghostcrab_delete` tool. To handle note moves or deletions, use the tombstone pattern: call `ghostcrab_upsert` with `facets.status: "deleted"` on the old `source_ref`, then upsert the new record. For hard deletes, use manual SQL `DELETE` statements against the PostgreSQL database.
 
@@ -46,8 +46,11 @@ If any of these prerequisites fail, **stop here** and complete Phase A (SOP4) be
 
 ```
 Phase A — Verify GhostCrab MCP    →  SOP4_environment_bootstrap.md
-Phase B — Model the project        →  SOP1_ghostcrab_mcp.md + SOP2_obsidian_ontologie.md
-Phase C — Parse and ingest files   →  SOP2_obsidian_ontologie.md §7 + SOP3_parsing_pipeline.md or SOP5_source_import_compiler.md
+Phase B0 — Choose ontology path   →  SOP0_import_path_choices.md
+Phase B — Model the project        →  SOP1 + SOP2 (§6 bis LinkML or §7 MCP)
+Phase C — Parse and ingest files   →  SOP2 + SOP3 or SOP5
+Phase C2.0 — Choose tabular path  →  SOP0_import_path_choices.md
+Phase C2 — Tabular import          →  SOP5 §1 bis (CLI) or §3 (scripts)
 ```
 
 ---
@@ -73,9 +76,23 @@ Then connect your MCP client (see SOP4 §A6) and call `ghostcrab_status`.
 
 ---
 
+## Phase B0 — Choose Ontology Import Path
+
+**Load:** `SOP0_import_path_choices.md`
+
+**Goal:** present two ontology import options and record the user's choice before any schema write.
+
+1. Ask the ontology path question (LinkML default vs MCP incremental).
+2. Record the answer in `templates/import_path_choices.yaml`.
+3. Route to `SOP2` section 6 bis (LinkML) or section 7 Voie A (MCP).
+
+**Phase B0 is done when:** `import_path_choices.yaml` has `ontology_path.choice` set and confirmed.
+
+---
+
 ## Phase B — Model the Project
 
-**Load:** `SOP1_ghostcrab_mcp.md` then `SOP2_obsidian_ontologie.md`
+**Load:** `SOP1_ghostcrab_mcp.md` then `SOP2_obsidian_ontologie.md` (section per B0 choice)
 
 **Goal:** help the user understand what kind of vault they have, which jobs it serves, and whether it should become one ontology or several related ontology families in one workspace.
 
@@ -92,10 +109,9 @@ Sequence:
 6. Fill `templates/jtbd.yaml` — what the vault is for, who uses it, and which ontology candidates exist.
 7. Only then propose a **provisional** model aligned with GhostCrab guidance.
 8. Call `ghostcrab_workspace_create` — creates the isolated workspace.
-9. Fill `templates/mvp_core_contract.yaml` — entity types, relation labels, enum values.
-10. Call `ghostcrab_schema_register` for each entity type declared in the contract.
-11. Use `ghostcrab_ddl_propose` → human approval → `ghostcrab_ddl_execute` for Layer 1 tables.
-12. Call `ghostcrab_workspace_inspect` — verify Layer 1 tables exist with correct semantics.
+9. **If LinkML (default):** generate `ontology/core.yaml` from `templates/linkml_ontology.stub.yaml`, dry-run `gcp brain ontology compile`, confirm, then `--import-db` (SOP2 §6 bis).
+10. **If MCP incremental:** fill `templates/mvp_core_contract.yaml`, `ghostcrab_schema_register`, DDL propose/execute (SOP2 §7 Voie A).
+11. Call `ghostcrab_workspace_inspect` — verify Layer 1 tables exist with correct semantics.
 
 ### Phase B Decision Lens
 
@@ -121,7 +137,7 @@ Ultra-short examples:
 
 ## Phase C — Parse and Ingest Files
 
-**Load:** `SOP2_obsidian_ontologie.md` §7 (injection sequence) + `SOP3_parsing_pipeline.md`
+**Load:** `SOP2_obsidian_ontologie.md` §7 Voie A or §6 bis + `SOP3_parsing_pipeline.md` (if MCP vault path)
 
 **Goal:** parse the vault (`.md` / `.pdf`) and bulk-load facts into PostgreSQL.
 
@@ -136,9 +152,21 @@ Sequence:
 
 **Phase C is done when:** `ghostcrab_coverage` reports ≥ 80% coverage on core schemas declared in `mvp_core_contract.yaml`.
 
+## Phase C2.0 — Choose Tabular Import Path
+
+**Load:** `SOP0_import_path_choices.md` (section 4)
+
+**Goal:** present two tabular import options before Gate 0 SOP5.
+
+1. Ask the tabular path question (structured-import CLI default vs SOP5 scripts).
+2. Record in `templates/import_path_choices.yaml`.
+3. Route to SOP5 section 1 bis or section 3 Voie A.
+
+---
+
 ## Phase C2 — Compile External Sources
 
-**Load:** `SOP5_source_import_compiler.md`
+**Load:** `SOP5_source_import_compiler.md` (section per C2.0 choice)
 
 **Goal:** compile CSV/API/JSON/app exports into validated GhostCrab records without hard-coding a project-specific pipeline.
 
@@ -178,6 +206,7 @@ node scripts/audit_import_pipeline.mjs --help
 
 | SOP | Phase | File |
 |-----|-------|------|
+| SOP0 | B0 + C2.0 — Import path choices | `SOP0_import_path_choices.md` |
 | SOP4 | A — Environment | `SOP4_environment_bootstrap.md` |
 | SOP1 | B — MCP architecture & DB contract | `SOP1_ghostcrab_mcp.md` |
 | SOP2 | B+C — Ontology modeling + injection | `SOP2_obsidian_ontologie.md` |
@@ -196,6 +225,8 @@ node scripts/audit_import_pipeline.mjs --help
 | Disambiguation | Phase B | `templates/disambiguation.yaml` |
 | Source Profile | Phase C2 | `templates/source_profile.yaml` |
 | Consumer Contract | Phase C2 | `templates/consumer_contract.yaml` |
+| Import Path Choices | B0 + C2.0 | `templates/import_path_choices.yaml` |
+| LinkML Ontology Stub | Phase B (LinkML) | `templates/linkml_ontology.stub.yaml` |
 | Import Manifest | Phase C2 | `templates/import_manifest.yaml` |
 
 ---

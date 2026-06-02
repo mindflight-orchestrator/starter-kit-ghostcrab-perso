@@ -35,6 +35,58 @@ source brute
 
 Cette SOP ne remplace pas SOP2/SOP3. Elle ajoute la couche manquante pour mapper des sources non-Obsidian.
 
+**Choix de voie (SOP0) :** avant Gate 0, poser la question tabulaire (Phase C2.0) et enregistrer le choix dans `templates/import_path_choices.yaml`. Deux voies coexistent :
+
+| Voie | Identifiant | Description |
+|------|-------------|-------------|
+| **A** | `sop5_compiler` | Scripts `starterkit/scripts/` + gates section 3 (historique) |
+| **B** | `structured_import_cli` | `gcp brain structured-import` (Personal SQLite, défaut recommandé) |
+
+---
+
+## Section 1 bis — Voie B : CLI structured-import (Personal / SQLite)
+
+> **Prérequis :** Phase C2.0 complétée — choix `structured_import_cli` enregistré. Pour la voie scripts StarterKit, voir section 3 (Voie A).
+
+Runbook operator : `ghostcrab-personal-mcp/docs/setup/structured-import.md`  
+Exemple bundled : `ghostcrab-personal-mcp/examples/immeuble/structured-import/`
+
+### Correspondance gates SOP5 ↔ commandes CLI
+
+| Gate | Voie A (scripts) | Voie B (structured-import) |
+|------|------------------|----------------------------|
+| 0 | manifest runtime | `ghostcrab_status` + arrêt backend MCP |
+| 1 | `export_model_contract` / `mvp_core_contract.yaml` | contrat model JSON ou ontologie LinkML compilée |
+| 2–3 | `source_profile.yaml` + `mapping_external_to_canonical.yaml` | idem (formats compatibles YAML/JSON) |
+| 4 | `transform_source_to_jsonb.mjs` → JSONL dry-run | `gcp brain structured-import validate` |
+| 5 | `import_facets.mjs` → plan `ghostcrab_upsert` | `register-semantics` + `apply` |
+| 6 | `materialize_graph_from_edges.mjs` | `reindex --scope all` |
+| 7 | projections / pack | `ghostcrab_pack` + scopes |
+| 8–9 | `validate_consumer_contract.mjs` + `audit_import_pipeline.mjs` | `consumer_contract.yaml` + smoke MCP |
+
+### Séquence Voie B (typique)
+
+```bash
+# Prérequis : GHOSTCRAB_SQLITE_PATH, backend arrêté ou --force
+gcp brain structured-import validate \
+  --workspace-id <ws> \
+  --model contracts/immeuble_structured_import_model.json \
+  --mapping contracts/mapping_external_to_canonical.json \
+  --source-dir fixtures/import_ready/
+
+gcp brain structured-import register-semantics \
+  --workspace-id <ws> \
+  --model ... --mapping ...
+
+gcp brain structured-import apply \
+  --workspace-id <ws> \
+  --mapping ... --data-plane import_ready
+
+gcp brain structured-import reindex --scope all
+```
+
+Enregistrer chaque commande dans `import_manifest.yaml` avec `path: structured_import_cli`.
+
 ---
 
 ## Section 2 — Position dans le starterkit
@@ -42,7 +94,8 @@ Cette SOP ne remplace pas SOP2/SOP3. Elle ajoute la couche manquante pour mapper
 Ordre canonique:
 
 1. `SOP4_environment_bootstrap.md` — verifier l'environnement.
-2. `SOP1_ghostcrab_mcp.md` — comprendre le contrat MCP / DB.
+2. `SOP0_import_path_choices.md` — choisir voie ontologie et voie tabulaire.
+3. `SOP1_ghostcrab_mcp.md` — comprendre le contrat MCP / DB.
 3. `SOP2_obsidian_ontologie.md` — modeliser le workspace et ses ontologies.
 4. `SOP3_parsing_pipeline.md` — parser un vault documentaire.
 5. `SOP5_source_import_compiler.md` — compiler une source externe generique vers le modele.
@@ -58,10 +111,14 @@ Templates utilises:
 - `templates/source_profile.yaml`
 - `templates/consumer_contract.yaml`
 - `templates/import_manifest.yaml`
+- `templates/import_path_choices.yaml`
+- `templates/linkml_ontology.stub.yaml`
 
 ---
 
-## Section 3 — Gates deterministes
+## Section 3 — Gates deterministes (Voie A : compiler StarterKit)
+
+> **Voie B :** si `structured_import_cli` est choisi dans `import_path_choices.yaml`, suivre section 1 bis au lieu de cette section pour l'exécution. Les gates ci-dessous restent la référence pour la voie scripts historique.
 
 ### Gate 0 — Autorisation et runtime
 
