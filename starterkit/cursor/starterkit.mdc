@@ -1,43 +1,33 @@
 ---
-description: GhostCrab MCP StarterKit — always-apply rule for Cursor
+description: GhostCrab MCP StarterKit — edition router for Cursor
 alwaysApply: true
 ---
 
 # GhostCrab MCP StarterKit
 
-You are working with the **mindBrain StarterKit** alongside a running GhostCrab MCP instance.
+## Default edition: personal-mcp
 
-## Phase routing
+1. Read `starterkit/EDITIONS.md` (switch to Pro only if explicit)
+2. **Default load:**
+   - `starterkit/personal-mcp/ROUTE_MAP.md`
+   - `starterkit/personal-mcp/SOP_SEQUENCE.md`
+3. **Pro (independent):** `starterkit/pro-mcp/ROUTE_MAP.md` + `SOP_SEQUENCE.md`
 
-Always start with Phase A unless the user explicitly confirms GhostCrab MCP is healthy.
+Root `SOP*.md` stubs point to personal-mcp by default — use edition folder SOPs, not root stubs.
 
-| Phase | SOP to load | Entry signal |
-|-------|-------------|--------------|
-| A — Verify environment | `SOP4_environment_bootstrap.md` | Start of session, or `ghostcrab_status` fails |
-| B0 — Import path choice | `SOP0_import_path_choices.md` | Phase A validated, before ontology writes |
-| B — Model the project | `SOP1_ghostcrab_mcp.md` + `SOP2_obsidian_ontologie.md` | B0 recorded; LinkML §6 bis or MCP §7 |
-| C — Parse and ingest | `SOP2` + `SOP3_parsing_pipeline.md` | Phase B validated (vault path) |
-| C2.0 — Tabular path choice | `SOP0_import_path_choices.md` §4 | Before SOP5 Gate 0 |
-| C2 — Tabular import | `SOP5_source_import_compiler.md` | §1 bis CLI or §3 scripts |
+## SOP0–SOP6 (complete per folder)
 
-## Import path defaults
+Each edition folder contains its own SOP0–SOP6 (including local SOP2). Stay in one folder + `templates/` + `scripts/`.
 
-- Ontology: **LinkML** (`gcp brain ontology compile`) unless user chooses MCP incremental.
-- Tabular (Personal SQLite): **structured-import CLI** unless user chooses SOP5 scripts.
-- Record choices in `templates/import_path_choices.yaml`. Never remove the alternative path.
+## Constraints
 
-## Constraints (always enforce)
+| Rule | personal-mcp (default) | pro-mcp |
+|------|------------------------|---------|
+| Bulk ingest | `gcp brain structured-import` | SOP3/SOP5 COPY |
+| Documents | SOP3 → SOP6 `gcp brain document` | SOP3 vault + SOP6 corpus COPY |
+| Projection audit | MCP only | MCP + mindCLI |
+| DDL Postgres Layer 1 | skip | `ghostcrab_ddl_*` |
 
-- **Read before write:** `ghostcrab_count` → `ghostcrab_search` → `ghostcrab_pack` before any write.
-- **MCP ≠ hot-path:** bulk ingestion via SQL COPY (Pro) or `gcp brain structured-import` (Personal), not `ghostcrab_remember` in a loop.
-- **Namespaced schema_id:** always `<workspace_id>:<entity_type>`.
-- **Edge labels:** `UPPER_SNAKE_CASE` only (e.g. `DEPENDS_ON`).
-- **Same DSN:** `DATABASE_URL` in MCP client config must match the one used for migrations and COPY ingestion (Pro).
-- **Checkpoint:** end each phase with `ghostcrab_project` (`note_kind: "checkpoint"`).
-
-## Phase A pass criteria (required before Phase B)
-
-- `docker inspect --format '{{.State.Health.Status}}' ghostcrab_postgres_native` → `healthy` (Pro) **or** `ghostcrab_status` OK (Personal SQLite)
-- `npm run smoke:mcp` → no critical error (when applicable)
-- `ghostcrab_status` → no `database: unreachable`
-- GhostCrab tools visible in agent
+- Read before write: count → search → pack
+- `schema_id`: `<workspace_id>:<entity_type>`
+- Edge labels: `UPPER_SNAKE_CASE`

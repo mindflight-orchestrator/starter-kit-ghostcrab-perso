@@ -1,0 +1,26 @@
+---
+description: GhostCrab MCP StarterKit — edition router for Cursor
+alwaysApply: true
+---
+
+# GhostCrab MCP StarterKit
+
+## Edition (choose first)
+
+1. Read `starterkit/EDITIONS.md`
+2. Follow **one** file only:
+   - `starterkit/personal-mcp/SOP_SEQUENCE.md` — `gcp` + MCP, SQLite
+   - `starterkit/pro-mcp/SOP_SEQUENCE.md` — PostgreSQL, COPY, mindCLI
+
+## Constraints
+
+| Rule | personal-mcp | pro-mcp |
+|------|--------------|---------|
+| Bulk ingest | `gcp brain structured-import` | SOP3 COPY + SOP5 Voie A |
+| Documents | SOP6 `gcp brain document` | SOP3 |
+| Projection audit | MCP only | MCP + mindCLI |
+| DDL Postgres Layer 1 | skip | `ghostcrab_ddl_*` |
+
+- Read before write: count → search → pack
+- `schema_id`: `<workspace_id>:<entity_type>`
+- Edge labels: `UPPER_SNAKE_CASE`

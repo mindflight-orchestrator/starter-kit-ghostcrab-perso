@@ -23,7 +23,7 @@ from typing import Any
 
 DEFAULT_DB = "data/ghostcrab.sqlite"
 DEFAULT_POSTGRES_DSN = "postgres://ghostcrab:ghostcrab@127.0.0.1:5434/ghostcrab"
-DEFAULT_MINDCLI = "/Users/francois/Documents/fevrier2026/mindbot/cmd/mindcli"
+DEFAULT_MINDCLI = "../mindbot/cmd/mindcli"
 
 
 def parse_json_maybe(value: Any) -> tuple[bool, Any]:
@@ -108,6 +108,12 @@ def sqlite_table_columns(conn: sqlite3.Connection, table: str) -> set[str]:
     return {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
 
 
+def sqlite_where_workspace(columns: set[str], workspace_id: str | None) -> tuple[str, tuple[Any, ...]]:
+    if workspace_id and "workspace_id" in columns:
+        return "WHERE workspace_id = ?", (workspace_id,)
+    return "", ()
+
+
 def fetch_sqlite(db_path: Path, workspace_id: str | None) -> dict[str, Any]:
     if not db_path.exists():
         return {"backend": "sqlite", "available": False, "error": f"SQLite database not found: {db_path}"}
@@ -165,8 +171,23 @@ def fetch_sqlite(db_path: Path, workspace_id: str | None) -> dict[str, Any]:
         schema_counts: Counter[str] = Counter()
         facet_keys: set[str] = set()
         if sqlite_table_exists(conn, "facets"):
-            for row in sqlite_rows(conn, "SELECT schema_id, facets FROM facets WHERE workspace_id = ? OR ? IS NULL", (workspace_id, workspace_id)):
+            columns = sqlite_table_columns(conn, "facets")
+            where, params = sqlite_where_workspace(columns, workspace_id)
+            for row in sqlite_rows(conn, f"SELECT schema_id, facets FROM facets {where}", params):
                 schema_counts[row["schema_id"]] += 1
+                ok, facets = parse_json_maybe(row["facets"])
+                if ok and isinstance(facets, dict):
+                    facet_keys.update(facets)
+        if sqlite_table_exists(conn, "agent_facts"):
+            columns = sqlite_table_columns(conn, "agent_facts")
+            schema_col = "schema_id" if "schema_id" in columns else None
+            facets_col = "facets" if "facets" in columns else "facets_json" if "facets_json" in columns else None
+            where, params = sqlite_where_workspace(columns, workspace_id)
+            select_schema = schema_col or "NULL"
+            select_facets = facets_col or "NULL"
+            for row in sqlite_rows(conn, f"SELECT {select_schema} AS schema_id, {select_facets} AS facets FROM agent_facts {where}", params):
+                if row["schema_id"]:
+                    schema_counts[row["schema_id"]] += 1
                 ok, facets = parse_json_maybe(row["facets"])
                 if ok and isinstance(facets, dict):
                     facet_keys.update(facets)
@@ -176,23 +197,32 @@ def fetch_sqlite(db_path: Path, workspace_id: str | None) -> dict[str, Any]:
         type_b_projection_results = []
         if sqlite_table_exists(conn, "graph_entity"):
             columns = sqlite_table_columns(conn, "graph_entity")
-            row = conn.execute("SELECT COUNT(*) FROM graph_entity WHERE workspace_id = ? OR ? IS NULL", (workspace_id, workspace_id)).fetchone()
+            where, params = sqlite_where_workspace(columns, workspace_id)
+            row = conn.execute(f"SELECT COUNT(*) FROM graph_entity {where}", params).fetchone()
             graph_entities_count = int(row[0] or 0)
-            if {"id", "type", "name"}.issubset(columns):
-                metadata_col = "metadata" if "metadata" in columns else None
+            id_col = "id" if "id" in columns else "entity_id" if "entity_id" in columns else None
+            type_col = "type" if "type" in columns else "entity_type" if "entity_type" in columns else None
+            name_col = "name" if "name" in columns else id_col
+            if id_col and type_col and name_col:
+                metadata_col = "metadata" if "metadata" in columns else "metadata_json" if "metadata_json" in columns else None
                 confidence_col = "confidence" if "confidence" in columns else None
                 select_metadata = metadata_col or "NULL"
                 select_confidence = confidence_col or "NULL"
+                where_parts = [f"{type_col} = 'ProjectionResult'"]
+                query_params: list[Any] = []
+                if workspace_id and "workspace_id" in columns:
+                    where_parts.append("workspace_id = ?")
+                    query_params.append(workspace_id)
                 for row in sqlite_rows(
                     conn,
                     f"""
-                    SELECT id, type, name, {select_metadata} AS metadata, {select_confidence} AS confidence
+                    SELECT {id_col} AS id, {type_col} AS type, {name_col} AS name,
+                           {select_metadata} AS metadata, {select_confidence} AS confidence
                     FROM graph_entity
-                    WHERE type = 'ProjectionResult'
-                      AND (workspace_id = ? OR ? IS NULL)
+                    WHERE {' AND '.join(where_parts)}
                     ORDER BY name
                     """,
-                    (workspace_id, workspace_id),
+                    tuple(query_params),
                 ):
                     ok, metadata = parse_json_maybe(row["metadata"])
                     metadata = metadata if ok and isinstance(metadata, dict) else {}
@@ -208,9 +238,12 @@ def fetch_sqlite(db_path: Path, workspace_id: str | None) -> dict[str, Any]:
                         }
                     )
         if sqlite_table_exists(conn, "graph_relation"):
+            columns = sqlite_table_columns(conn, "graph_relation")
+            where, params = sqlite_where_workspace(columns, workspace_id)
+            relation_col = "relation_type" if "relation_type" in columns else "label" if "label" in columns else "type"
             graph_relations = [
                 {"type": row["relation_type"], "source_name": "", "target_name": ""}
-                for row in sqlite_rows(conn, "SELECT relation_type FROM graph_relation WHERE workspace_id = ? OR ? IS NULL", (workspace_id, workspace_id))
+                for row in sqlite_rows(conn, f"SELECT {relation_col} AS relation_type FROM graph_relation {where}", params)
             ]
 
     return {
@@ -606,17 +639,15 @@ def mindcli_command_examples(report: dict[str, Any]) -> list[str]:
     workspace = report.get("workspace_filter") or "<workspace_id>"
     dsn = '"$GHOSTCRAB_DSN"'
     mindcli_path = report.get("mindcli_path") or DEFAULT_MINDCLI
-    mindbot_root = str(Path(mindcli_path).parents[1]) if Path(mindcli_path).name == "mindcli" else "/Users/francois/Documents/fevrier2026/mindbot"
     first_scope = ""
     if report.get("projections"):
         first_scope = report["projections"][0].get("scope") or ""
     if not first_scope:
         first_scope = f"{workspace}:<domain>:<projection_name>"
     return [
-        f"cd {mindbot_root}",
-        f"DATABASE_URL={dsn} go run ./cmd/mindcli --json mb_pragma projections list --workspace {workspace}",
-        f"DATABASE_URL={dsn} go run ./cmd/mindcli --json mb_pragma projection get --scope {first_scope}",
-        f"DATABASE_URL={dsn} go run ./cmd/mindcli --json mb_pragma inspect --user <agent_id> --query '<natural-language question>' --limit 8",
+        f"DATABASE_URL={dsn} go run {mindcli_path} --json mb_pragma projections list --workspace {workspace}",
+        f"DATABASE_URL={dsn} go run {mindcli_path} --json mb_pragma projection get --scope {first_scope}",
+        f"DATABASE_URL={dsn} go run {mindcli_path} --json mb_pragma inspect --user <agent_id> --query '<natural-language question>' --limit 8",
     ]
 
 

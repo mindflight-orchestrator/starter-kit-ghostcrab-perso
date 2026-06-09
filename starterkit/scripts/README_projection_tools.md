@@ -52,13 +52,13 @@ For PostgreSQL projects, the generated Markdown report also reminds agents of
 the mindCLI commands to use:
 
 ```bash
-DATABASE_URL="$GHOSTCRAB_DSN" go run ./cmd/mindcli --json \
+DATABASE_URL="$GHOSTCRAB_DSN" go run ../mindbot/cmd/mindcli --json \
   mb_pragma projections list --workspace tp-chantier-full
 
-DATABASE_URL="$GHOSTCRAB_DSN" go run ./cmd/mindcli --json \
+DATABASE_URL="$GHOSTCRAB_DSN" go run ../mindbot/cmd/mindcli --json \
   mb_pragma projection get --scope tp-chantier-full:bim:conflits_zone_impact
 
-DATABASE_URL="$GHOSTCRAB_DSN" go run ./cmd/mindcli --json \
+DATABASE_URL="$GHOSTCRAB_DSN" go run ../mindbot/cmd/mindcli --json \
   mb_pragma inspect --user coordination_bot --query "conflits BIM zone" --limit 8
 ```
 
