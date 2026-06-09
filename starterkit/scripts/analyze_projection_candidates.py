@@ -51,6 +51,18 @@ class AnalysisPattern:
     confidence: float = 0.8
 
 
+VALID_PROJ_TYPES = frozenset({"FACT", "GOAL", "STEP", "CONSTRAINT"})
+VALID_ARTIFACT_KINDS = frozenset({"analysis_plan", "live_answer_view", "answer_snapshot", "evidence_pack"})
+
+
+@dataclass
+class MaterializationLookup:
+    analysis_plan_scopes: set[str]
+    live_answer_view_ids: set[str]
+    live_answer_view_slugs: set[str]
+    live_answer_legacy_refs: set[str]
+
+
 @dataclass
 class ProjectionCandidate:
     name: str
@@ -61,6 +73,8 @@ class ProjectionCandidate:
     source_section: str
     expected_scope: str
     suggested_proj_type: str
+    suggested_artifact_kind: str
+    materialization_target: str
     retrieval_jobs: list[str]
     kpi_hints: list[str]
     data_dependencies: list[str]
@@ -70,6 +84,7 @@ class ProjectionCandidate:
     origin: str = "source_table"
     lens: str = ""
     role: str = ""
+    materialization_warning: str = ""
     required_schemas: list[str] | None = None
     required_facets: list[str] | None = None
     required_edges: list[str] | None = None
@@ -95,7 +110,9 @@ LLM_FINDINGS_SCHEMA = {
             "label": "Human readable projection label",
             "business_question": "Question a manager or agent needs to answer",
             "description": "Why this projection matters",
-            "suggested_proj_type": "FACT|STEP|CONSTRAINT|NOTE|GOAL",
+            "suggested_proj_type": "FACT|STEP|CONSTRAINT|GOAL",
+            "suggested_artifact_kind": "analysis_plan|live_answer_view|answer_snapshot|evidence_pack",
+            "materialization_target": "ghostcrab_project|answer_artifact_seed|review_only",
             "retrieval_jobs": ["summary", "monitor", "graph_traversal"],
             "required_schemas": ["chantier:tache"],
             "required_facets": ["owner", "risk_status"],
@@ -547,24 +564,182 @@ def suggested_type(jobs: list[str]) -> str:
         return "STEP"
     if "aggregate" in jobs or "summary" in jobs:
         return "FACT"
-    return "NOTE"
+    return "STEP"
 
 
-def materialized_scopes_sqlite(db_path: Path, workspace_id: str) -> set[str]:
+def normalize_proj_type(value: str, jobs: list[str] | None = None) -> tuple[str, str]:
+    normalized = value.strip().upper()
+    if normalized in VALID_PROJ_TYPES:
+        return normalized, ""
+    if normalized == "NOTE":
+        fallback = suggested_type(jobs or [])
+        return fallback, "NOTE is pack-ranking only; use STEP/FACT/CONSTRAINT/GOAL for ghostcrab_project"
+    if jobs:
+        return suggested_type(jobs), f"Unknown proj_type `{value}`; inferred {suggested_type(jobs)}"
+    return "STEP", f"Unknown proj_type `{value}`; defaulting to STEP"
+
+
+def infer_artifact_kind(
+    jobs: list[str],
+    label: str,
+    description: str,
+    explicit: str | None = None,
+) -> str:
+    if explicit and explicit in VALID_ARTIFACT_KINDS:
+        return explicit
+    text = f"{label} {description}".lower()
+    if "monitor" in jobs and any(word in text for word in ["tableau", "dashboard", "direct", "temps reel", "temps réel", "live", "quotidien", "journalier"]):
+        return "live_answer_view"
+    return "analysis_plan"
+
+
+def infer_materialization_target(artifact_kind: str, origin: str) -> str:
+    if origin == "manager_questions":
+        return "review_only"
+    if artifact_kind == "live_answer_view":
+        return "answer_artifact_seed"
+    if artifact_kind == "analysis_plan":
+        return "ghostcrab_project"
+    if artifact_kind in {"answer_snapshot", "evidence_pack"}:
+        return "review_only"
+    return "ghostcrab_project"
+
+
+def materialization_status_for_candidate(
+    candidate: ProjectionCandidate,
+    lookup: MaterializationLookup,
+) -> str:
+    if candidate.suggested_artifact_kind == "live_answer_view":
+        slug = candidate.name
+        artifact_id = f"live_answer_view__{slug}"
+        if (
+            artifact_id in lookup.live_answer_view_ids
+            or slug in lookup.live_answer_view_slugs
+            or candidate.expected_scope in lookup.live_answer_legacy_refs
+        ):
+            return "materialized"
+        return "candidate"
+    if candidate.expected_scope in lookup.analysis_plan_scopes:
+        return "materialized"
+    return "candidate"
+
+
+def finalize_candidate_fields(
+    *,
+    name: str,
+    label: str,
+    ontology: str,
+    description: str,
+    source_file: str,
+    source_section: str,
+    expected_scope: str,
+    retrieval_jobs: list[str],
+    kpi_hints: list[str],
+    data_dependencies: list[str],
+    lookup: MaterializationLookup,
+    recommendation: str | None = None,
+    business_question: str = "",
+    origin: str = "source_table",
+    lens: str = "",
+    role: str = "",
+    required_schemas: list[str] | None = None,
+    required_facets: list[str] | None = None,
+    required_edges: list[str] | None = None,
+    human_jobs: list[str] | None = None,
+    ai_agent_jobs: list[str] | None = None,
+    impact_summary: str = "",
+    pattern_tags: list[str] | None = None,
+    confidence: float = 1.0,
+    proj_type: str | None = None,
+    artifact_kind: str | None = None,
+) -> ProjectionCandidate:
+    suggested_proj_type, warning = normalize_proj_type(proj_type or suggested_type(retrieval_jobs), retrieval_jobs)
+    suggested_artifact_kind = infer_artifact_kind(retrieval_jobs, label, description, artifact_kind)
+    materialization_target = infer_materialization_target(suggested_artifact_kind, origin)
+    candidate = ProjectionCandidate(
+        name=name,
+        label=label,
+        ontology=ontology,
+        description=description,
+        source_file=source_file,
+        source_section=source_section,
+        expected_scope=expected_scope,
+        suggested_proj_type=suggested_proj_type,
+        suggested_artifact_kind=suggested_artifact_kind,
+        materialization_target=materialization_target,
+        retrieval_jobs=retrieval_jobs,
+        kpi_hints=kpi_hints,
+        data_dependencies=data_dependencies,
+        materialization_status="candidate",
+        recommendation=recommendation or "review",
+        business_question=business_question,
+        origin=origin,
+        lens=lens,
+        role=role,
+        materialization_warning=warning,
+        required_schemas=required_schemas,
+        required_facets=required_facets,
+        required_edges=required_edges,
+        human_jobs=human_jobs,
+        ai_agent_jobs=ai_agent_jobs,
+        impact_summary=impact_summary,
+        pattern_tags=pattern_tags,
+        confidence=confidence,
+    )
+    candidate.materialization_status = materialization_status_for_candidate(candidate, lookup)
+    if recommendation is None:
+        if candidate.materialization_status == "materialized":
+            candidate.recommendation = "keep"
+        elif candidate.materialization_target == "review_only":
+            candidate.recommendation = "review"
+        elif data_dependencies or required_schemas:
+            candidate.recommendation = "add"
+        else:
+            candidate.recommendation = "review"
+    return candidate
+
+
+def materialized_lookup_sqlite(db_path: Path, workspace_id: str) -> MaterializationLookup:
+    scopes: set[str] = set()
+    live_ids: set[str] = set()
+    live_slugs: set[str] = set()
+    legacy_refs: set[str] = set()
     if not db_path.exists():
-        return set()
+        return MaterializationLookup(scopes, live_ids, live_slugs, legacy_refs)
     with sqlite3.connect(db_path) as conn:
-        return {
-            row[0]
+        if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='projections'").fetchone():
+            scopes = {
+                row[0]
+                for row in conn.execute(
+                    "SELECT scope FROM projections WHERE scope = ? OR scope LIKE ?",
+                    (workspace_id, f"{workspace_id}:%"),
+                )
+                if row[0]
+            }
+        if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='mindbrain_answer_artifacts'").fetchone():
             for row in conn.execute(
-                "SELECT scope FROM projections WHERE scope = ? OR scope LIKE ?",
-                (workspace_id, f"{workspace_id}:%"),
-            )
-            if row[0]
-        }
+                """
+                SELECT artifact_id, slug, legacy_ref
+                FROM mindbrain_answer_artifacts
+                WHERE artifact_kind = 'live_answer_view'
+                  AND (workspace_id = ? OR workspace_id IS NULL)
+                """,
+                (workspace_id,),
+            ):
+                if row[0]:
+                    live_ids.add(row[0])
+                if row[1]:
+                    live_slugs.add(row[1])
+                if row[2]:
+                    legacy_refs.add(row[2])
+    return MaterializationLookup(scopes, live_ids, live_slugs, legacy_refs)
 
 
-def materialized_scopes_postgres(postgres_dsn: str, workspace_id: str) -> set[str]:
+def materialized_lookup_postgres(postgres_dsn: str, workspace_id: str) -> MaterializationLookup:
+    scopes: set[str] = set()
+    live_ids: set[str] = set()
+    live_slugs: set[str] = set()
+    legacy_refs: set[str] = set()
     try:
         import psycopg2
     except ImportError as exc:
@@ -585,25 +760,68 @@ def materialized_scopes_postgres(postgres_dsn: str, workspace_id: str) -> set[st
             tables = {(schema, table) for schema, table in cur.fetchall()}
             if ("mb_pragma", "projections") in tables:
                 cur.execute(
-                    """
-                    SELECT scope
-                    FROM mb_pragma.projections
-                    WHERE scope = %s OR scope LIKE %s
-                    """,
+                    "SELECT scope FROM mb_pragma.projections WHERE scope = %s OR scope LIKE %s",
                     (workspace_id, f"{workspace_id}:%"),
                 )
+                scopes = {row[0] for row in cur.fetchall() if row[0]}
             elif ("public", "projections") in tables:
                 cur.execute(
-                    """
-                    SELECT scope
-                    FROM public.projections
-                    WHERE scope = %s OR scope LIKE %s
-                    """,
+                    "SELECT scope FROM public.projections WHERE scope = %s OR scope LIKE %s",
                     (workspace_id, f"{workspace_id}:%"),
                 )
-            else:
-                return set()
-            return {row[0] for row in cur.fetchall() if row[0]}
+                scopes = {row[0] for row in cur.fetchall() if row[0]}
+
+            for schema in ("public", "mb_pragma"):
+                cur.execute(
+                    """
+                    SELECT 1 FROM information_schema.tables
+                    WHERE table_schema = %s AND table_name = 'mindbrain_answer_artifacts'
+                    """,
+                    (schema,),
+                )
+                if not cur.fetchone():
+                    continue
+                cur.execute(
+                    f"""
+                    SELECT artifact_id, slug, legacy_ref
+                    FROM {schema}.mindbrain_answer_artifacts
+                    WHERE artifact_kind = 'live_answer_view'
+                      AND (workspace_id = %s OR workspace_id IS NULL)
+                    """,
+                    (workspace_id,),
+                )
+                for artifact_id, slug, legacy_ref in cur.fetchall():
+                    if artifact_id:
+                        live_ids.add(artifact_id)
+                    if slug:
+                        live_slugs.add(slug)
+                    if legacy_ref:
+                        legacy_refs.add(legacy_ref)
+                break
+    return MaterializationLookup(scopes, live_ids, live_slugs, legacy_refs)
+
+
+def materialized_lookup(
+    db_path: Path,
+    workspace_id: str,
+    db_kind: str = "auto",
+    postgres_dsn: str | None = None,
+) -> MaterializationLookup:
+    empty = MaterializationLookup(set(), set(), set(), set())
+    if db_kind == "none":
+        return empty
+    if db_kind == "postgres":
+        return materialized_lookup_postgres(postgres_dsn or DEFAULT_POSTGRES_DSN, workspace_id)
+    if db_kind == "sqlite":
+        return materialized_lookup_sqlite(db_path, workspace_id)
+    if postgres_dsn:
+        try:
+            lookup = materialized_lookup_postgres(postgres_dsn, workspace_id)
+            if lookup.analysis_plan_scopes or lookup.live_answer_view_ids:
+                return lookup
+        except Exception:
+            pass
+    return materialized_lookup_sqlite(db_path, workspace_id)
 
 
 def materialized_scopes(
@@ -612,20 +830,7 @@ def materialized_scopes(
     db_kind: str = "auto",
     postgres_dsn: str | None = None,
 ) -> set[str]:
-    if db_kind == "none":
-        return set()
-    if db_kind == "postgres":
-        return materialized_scopes_postgres(postgres_dsn or DEFAULT_POSTGRES_DSN, workspace_id)
-    if db_kind == "sqlite":
-        return materialized_scopes_sqlite(db_path, workspace_id)
-    if postgres_dsn:
-        try:
-            scopes = materialized_scopes_postgres(postgres_dsn, workspace_id)
-            if scopes:
-                return scopes
-        except Exception:
-            pass
-    return materialized_scopes_sqlite(db_path, workspace_id)
+    return materialized_lookup(db_path, workspace_id, db_kind, postgres_dsn).analysis_plan_scopes
 
 
 def normalize_lens(value: str) -> str:
@@ -690,7 +895,7 @@ def extract_markdown_candidates(
     db_kind: str,
     postgres_dsn: str | None,
 ) -> list[ProjectionCandidate]:
-    scopes = materialized_scopes(db_path, workspace_id, db_kind, postgres_dsn)
+    lookup = materialized_lookup(db_path, workspace_id, db_kind, postgres_dsn)
     candidates = []
     paths = source_dir.rglob("*.md") if recursive else source_dir.glob("*.md")
     for path in sorted(paths):
@@ -701,13 +906,9 @@ def extract_markdown_candidates(
             name = slugify(label)
             expected_scope = f"{workspace_id}:{ontology}:{name}"
             jobs = infer_retrieval_jobs(label, description)
-            status = "materialized" if expected_scope in scopes else "candidate"
             dependencies = infer_dependencies(label, description)
-            recommendation = "add" if status == "candidate" and dependencies else "review"
-            if status == "materialized":
-                recommendation = "keep"
             candidates.append(
-                ProjectionCandidate(
+                finalize_candidate_fields(
                     name=name,
                     label=label,
                     ontology=ontology,
@@ -715,12 +916,10 @@ def extract_markdown_candidates(
                     source_file=str(path),
                     source_section="Projections / rapports types",
                     expected_scope=expected_scope,
-                    suggested_proj_type=suggested_type(jobs),
                     retrieval_jobs=jobs,
                     kpi_hints=infer_kpis(label, description),
                     data_dependencies=dependencies,
-                    materialization_status=status,
-                    recommendation=recommendation,
+                    lookup=lookup,
                     business_question=description if description.endswith("?") else "",
                     required_schemas=dependencies,
                 )
@@ -736,7 +935,7 @@ def extract_projection_catalog_candidates(
     postgres_dsn: str | None,
 ) -> list[ProjectionCandidate]:
     payload = load_yaml_file(path)
-    scopes = materialized_scopes(db_path, workspace_id, db_kind, postgres_dsn)
+    lookup = materialized_lookup(db_path, workspace_id, db_kind, postgres_dsn)
     candidates: list[ProjectionCandidate] = []
     for item in payload.get("projections", []) or []:
         if not isinstance(item, dict):
@@ -746,9 +945,9 @@ def extract_projection_catalog_candidates(
         parts = scope.split(":")
         ontology = parts[1] if len(parts) > 2 and parts[0] == workspace_id else "catalog"
         jobs = as_list(item.get("retrieval_jobs")) or ["summary"]
-        status = "materialized" if scope in scopes else "candidate"
+        recommendation = "keep" if scope in lookup.analysis_plan_scopes else "add"
         candidates.append(
-            ProjectionCandidate(
+            finalize_candidate_fields(
                 name=name,
                 label=str(item.get("label") or name),
                 ontology=ontology,
@@ -756,12 +955,11 @@ def extract_projection_catalog_candidates(
                 source_file=str(path),
                 source_section="projection_catalog.yaml",
                 expected_scope=scope,
-                suggested_proj_type=str(item.get("proj_type") or suggested_type(jobs)),
                 retrieval_jobs=jobs,
                 kpi_hints=as_list(item.get("kpi_hints")),
                 data_dependencies=as_list(item.get("required_schemas")),
-                materialization_status=status,
-                recommendation="keep" if status == "materialized" else "add",
+                lookup=lookup,
+                recommendation=recommendation,
                 business_question=str(item.get("business_question") or ""),
                 origin="projection_catalog",
                 required_schemas=as_list(item.get("required_schemas")),
@@ -769,6 +967,8 @@ def extract_projection_catalog_candidates(
                 required_edges=as_list(item.get("required_edges")),
                 impact_summary="Projection deja declaree dans le catalogue decisionnel.",
                 confidence=1.0,
+                proj_type=str(item.get("proj_type") or ""),
+                artifact_kind=str(item.get("artifact_kind") or "") or None,
             )
         )
     return candidates
@@ -782,7 +982,8 @@ def extract_manager_question_candidates(
     postgres_dsn: str | None,
 ) -> list[ProjectionCandidate]:
     payload = load_yaml_file(path)
-    scopes = materialized_scopes(db_path, workspace_id, db_kind, postgres_dsn)
+    lookup = materialized_lookup(db_path, workspace_id, db_kind, postgres_dsn)
+    scopes = lookup.analysis_plan_scopes
     candidates: list[ProjectionCandidate] = []
     for family, questions in (payload.get("families") or {}).items():
         if not isinstance(questions, list):
@@ -799,9 +1000,9 @@ def extract_manager_question_candidates(
             matching_projection_scope = next((item for item in sorted(scopes) if projection and item.endswith(f":{projection}")), "")
             if matching_projection_scope:
                 scope = matching_projection_scope
-            status = "materialized" if scope in scopes else "candidate"
+            recommendation = "keep" if scope in scopes else "review"
             candidates.append(
-                ProjectionCandidate(
+                finalize_candidate_fields(
                     name=name,
                     label=q_text,
                     ontology=slugify(str(family)),
@@ -809,16 +1010,16 @@ def extract_manager_question_candidates(
                     source_file=str(path),
                     source_section="manager_questions.yaml",
                     expected_scope=scope,
-                    suggested_proj_type="NOTE",
-                    retrieval_jobs=["question"],
+                    retrieval_jobs=["summary"],
                     kpi_hints=[],
                     data_dependencies=[],
-                    materialization_status=status,
-                    recommendation="keep" if status == "materialized" else "review",
+                    lookup=lookup,
+                    recommendation=recommendation,
                     business_question=q_text,
                     origin="manager_questions",
                     impact_summary=f"Question manager associee a la projection `{projection}`.",
                     confidence=1.0,
+                    proj_type="NOTE",
                 )
             )
     return candidates
@@ -851,7 +1052,7 @@ def extract_lens_candidates(
     db_kind: str,
     postgres_dsn: str | None,
 ) -> list[ProjectionCandidate]:
-    scopes = materialized_scopes(db_path, workspace_id, db_kind, postgres_dsn)
+    lookup = materialized_lookup(db_path, workspace_id, db_kind, postgres_dsn)
     existing = source_text_index(source_candidates)
     candidates: list[ProjectionCandidate] = []
 
@@ -861,10 +1062,8 @@ def extract_lens_candidates(
             if name in existing or slugify(pattern.business_question) in existing:
                 continue
             expected_scope = f"{workspace_id}:{slugify(role)}:{name}"
-            status = "materialized" if expected_scope in scopes else "candidate"
-            recommendation = "keep" if status == "materialized" else "add"
             candidates.append(
-                ProjectionCandidate(
+                finalize_candidate_fields(
                     name=name,
                     label=pattern.label,
                     ontology=slugify(role),
@@ -872,12 +1071,11 @@ def extract_lens_candidates(
                     source_file="analysis_lens",
                     source_section=pattern.lens,
                     expected_scope=expected_scope,
-                    suggested_proj_type=pattern.suggested_proj_type,
                     retrieval_jobs=pattern.retrieval_jobs,
                     kpi_hints=pattern.kpi_hints,
                     data_dependencies=sorted(set(pattern.required_schemas)),
-                    materialization_status=status,
-                    recommendation=recommendation,
+                    lookup=lookup,
+                    recommendation="add",
                     business_question=pattern.business_question,
                     origin="analysis_lens",
                     lens=pattern.lens,
@@ -890,6 +1088,7 @@ def extract_lens_candidates(
                     impact_summary=pattern.impact_summary,
                     pattern_tags=pattern.pattern_tags,
                     confidence=pattern.confidence,
+                    proj_type=pattern.suggested_proj_type,
                 )
             )
     return candidates
@@ -950,7 +1149,7 @@ def load_llm_findings(
     if not isinstance(payload, dict):
         raise ValueError("LLM findings file must contain a JSON object")
 
-    scopes = materialized_scopes(db_path, workspace_id, db_kind, postgres_dsn)
+    lookup = materialized_lookup(db_path, workspace_id, db_kind, postgres_dsn)
     candidates: list[ProjectionCandidate] = []
     for index, item in enumerate(payload.get("candidates", []), 1):
         if not isinstance(item, dict):
@@ -959,11 +1158,10 @@ def load_llm_findings(
         name = slugify(str(item.get("name") or label))
         ontology = slugify(str(item.get("ontology") or role))
         expected_scope = str(item.get("expected_scope") or f"{workspace_id}:{ontology}:{name}")
-        status = "materialized" if expected_scope in scopes else "candidate"
         required_schemas = as_list(item.get("required_schemas") or item.get("data_dependencies"))
         retrieval_jobs = as_list(item.get("retrieval_jobs")) or ["summary"]
         candidates.append(
-            ProjectionCandidate(
+            finalize_candidate_fields(
                 name=name,
                 label=label,
                 ontology=ontology,
@@ -971,12 +1169,11 @@ def load_llm_findings(
                 source_file=str(path),
                 source_section="llm_findings",
                 expected_scope=expected_scope,
-                suggested_proj_type=str(item.get("suggested_proj_type") or suggested_type(retrieval_jobs)),
                 retrieval_jobs=retrieval_jobs,
                 kpi_hints=as_list(item.get("kpi_hints")),
                 data_dependencies=required_schemas,
-                materialization_status=status,
-                recommendation="keep" if status == "materialized" else str(item.get("recommendation") or "review"),
+                lookup=lookup,
+                recommendation=str(item.get("recommendation") or "review"),
                 business_question=str(item.get("business_question") or ""),
                 origin="llm_review",
                 lens=str(item.get("lens") or "agent_llm_review"),
@@ -989,6 +1186,8 @@ def load_llm_findings(
                 impact_summary=str(item.get("impact_summary") or ""),
                 pattern_tags=as_list(item.get("pattern_tags")),
                 confidence=float(item.get("confidence", 0.7)),
+                proj_type=str(item.get("suggested_proj_type") or ""),
+                artifact_kind=str(item.get("suggested_artifact_kind") or item.get("artifact_kind") or "") or None,
             )
         )
     return candidates, payload
@@ -1099,9 +1298,11 @@ def write_validation_markdown(payload: dict[str, Any], path: Path) -> None:
             [
                 f"### {item['label']}",
                 f"- Question: {question}",
-                f"- Projection: `{item['name']}`",
-                f"- Scope: `{item['expected_scope']}`",
-                f"- Statut: `{item['materialization_status']}`",
+                    f"- Projection: `{item['name']}`",
+                    f"- Scope: `{item['expected_scope']}`",
+                    f"- artifact_kind: `{item.get('suggested_artifact_kind', 'analysis_plan')}`",
+                    f"- proj_type: `{item['suggested_proj_type']}`",
+                    f"- Statut: `{item['materialization_status']}`",
                 f"- Facettes requises: {fmt_values(item.get('required_facets', []))}",
                 f"- Arêtes requises: {fmt_values(item.get('required_edges', []))}",
                 "",
@@ -1129,7 +1330,9 @@ def write_validation_markdown(payload: dict[str, Any], path: Path) -> None:
                     f"- Categorie: `{item.get('lens') or item.get('origin')}`",
                     f"- Question: {question}",
                     f"- Projection proposee: `{item['name']}`",
-                    f"- Type: `{item['suggested_proj_type']}`",
+                    f"- artifact_kind: `{item.get('suggested_artifact_kind', 'analysis_plan')}`",
+                    f"- proj_type: `{item['suggested_proj_type']}`",
+                    f"- materialization_target: `{item.get('materialization_target', 'ghostcrab_project')}`",
                     f"- Jobs humain: {', '.join(item.get('human_jobs', [])) or 'n/a'}",
                     f"- Jobs agent IA: {', '.join(item.get('ai_agent_jobs', [])) or 'n/a'}",
                     f"- Impact modele: {item.get('impact_summary') or 'n/a'}",
@@ -1193,7 +1396,12 @@ def write_markdown(payload: dict[str, Any], path: Path) -> None:
         f"- Analysis lens count: {payload['summary']['analysis_lens_count']}",
         f"- Active lenses: {', '.join(payload['active_lenses']) or 'n/a'}",
         "",
+        "## Counts by artifact_kind",
+        "",
     ]
+    for kind, count in (payload["summary"].get("by_artifact_kind") or {}).items():
+        lines.append(f"- `{kind}`: {count}")
+    lines.extend(["",])
 
     impacts = payload["model_impacts"]
     if impacts["lens_candidate_count"]:
@@ -1229,7 +1437,11 @@ def write_markdown(payload: dict[str, Any], path: Path) -> None:
             lines.append(f"- Origin: `{item.get('origin', 'source_table')}`")
             if item.get("lens"):
                 lines.append(f"- Lens: `{item['lens']}`")
-            lines.append(f"- Suggested type: `{item['suggested_proj_type']}`")
+            lines.append(f"- artifact_kind: `{item.get('suggested_artifact_kind', 'analysis_plan')}`")
+            lines.append(f"- proj_type: `{item['suggested_proj_type']}`")
+            lines.append(f"- materialization_target: `{item.get('materialization_target', 'ghostcrab_project')}`")
+            if item.get("materialization_warning"):
+                lines.append(f"- Warning: {item['materialization_warning']}")
             lines.append(f"- Jobs: {jobs}")
             lines.append(f"- Dependencies: {deps}")
             if item.get("business_question"):
@@ -1252,7 +1464,10 @@ def compact_candidate_for_agent(candidate: dict[str, Any]) -> dict[str, Any]:
         "business_question",
         "description",
         "expected_scope",
+        "suggested_artifact_kind",
         "suggested_proj_type",
+        "materialization_target",
+        "materialization_warning",
         "retrieval_jobs",
         "data_dependencies",
         "required_facets",
@@ -1372,8 +1587,11 @@ def main() -> None:
     model_contract = load_model_contract(Path(args.model_contract) if args.model_contract else None)
 
     by_ontology: dict[str, list[dict[str, Any]]] = {}
+    by_artifact_kind: dict[str, int] = {}
     for candidate in candidates:
         by_ontology.setdefault(candidate.ontology, []).append(asdict(candidate))
+        kind = candidate.suggested_artifact_kind or "analysis_plan"
+        by_artifact_kind[kind] = by_artifact_kind.get(kind, 0) + 1
 
     payload = {
         "workspace_id": args.workspace,
@@ -1399,6 +1617,7 @@ def main() -> None:
             "source_table_count": sum(1 for item in candidates if item.origin == "source_table"),
             "source_input_count": sum(1 for item in candidates if item.origin in {"source_table", "projection_catalog", "manager_questions"}),
             "total_count": len(candidates),
+            "by_artifact_kind": dict(sorted(by_artifact_kind.items())),
         },
         "model_impacts": collect_model_impacts(candidates),
         "validation_gaps": collect_validation_gaps(candidates, model_contract),

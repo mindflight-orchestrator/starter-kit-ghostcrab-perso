@@ -4,38 +4,57 @@ These Python helpers support the GhostCrab projection workflow around SOP1, SOP2
 
 They cover two different moments:
 
-1. **Audit existing projections** already stored in a GhostCrab SQLite database.
+1. **Audit existing answer artifacts and projections** already stored in a GhostCrab SQLite or PostgreSQL database.
 2. **Analyze upstream ontology notes** to extract projection candidates before materialization.
 
-The scripts are intentionally read-only. They do not write projections to GhostCrab.
+The scripts are intentionally read-only. They do not write projections or artifacts to GhostCrab.
 
-## 1. Audit materialized projections
+## Answer artifact taxonomy (canonical)
 
-Use `audit_ghostcrab_projections.py` when you want to inspect what is already
-stored in the projections table and, when a model contract is supplied, whether
-the graph and facets can support the planned projections.
+GhostCrab Personal routes agents by **`artifact_kind`**, not by legacy Type A/B labels. Use this vocabulary first; legacy labels appear only as compatibility footnotes.
 
-The audit now distinguishes the two GhostCrab projection modes:
+| `artifact_kind` | Role | Storage (Personal SQLite) | MCP / operator read |
+|-----------------|------|---------------------------|---------------------|
+| `analysis_plan` | Stable retrieval contract (business question, required schemas/facets/edges) | `projections` | `ghostcrab_project`, `ghostcrab_pack` |
+| `live_answer_view` | Dynamic, refreshable dashboard / live answer | `mindbrain_answer_artifacts` | `ghostcrab_live_refresh`, `gcp brain artifact refresh` |
+| `answer_snapshot` | Frozen calculated report with evidence | `graph_entity` (`ProjectionResult`) | `ghostcrab_projection_get` |
+| `evidence_pack` | Evidence bundle linked to a parent artifact | `mindbrain_answer_artifacts` | `ghostcrab_artifact_get` |
 
-- **Type A / declared projections**: rows in `mb_pragma.projections` on
-  PostgreSQL, or `projections` on SQLite. This is the JSONB projection contract
-  used by `ghostcrab_pack`, `mb_pragma.pragma_pack_context`, and mindCLI. It
-  describes the business question, required schemas, facets, edges, and
-  retrieval jobs.
-- **Type B / graph projection results**: rows in `graph.entity` where
-  `type = 'ProjectionResult'`. These are calculated report snapshots with
-  evidence links, read by `ghostcrab_projection_get` /
-  `mb_ontology.ghostcrab_projection_get`.
+**Lifecycle** on registry artifacts: `draft` | `active` | `frozen` | `stale` | `archived` | `deleted`. After bulk import, `live_answer_view` rows are often **`stale`** until refreshed — expected, not a hard failure.
 
-A healthy Type A count means the projection catalogue is ready for agents. A
-zero Type B count does not mean projections are missing; it means no calculated
-graph snapshot has been written for those projections.
+**Legacy compatibility** (wire overlays only — do not use as primary routing):
+
+| Legacy | Maps to |
+|--------|---------|
+| Type A / `projection_type_a` | `analysis_plan` |
+| Type B / `projection_type_b` | `answer_snapshot` |
+
+**Important:** zero `answer_snapshot` rows does **not** mean the catalogue is missing when `analysis_plan` rows exist. **`live_answer_view` is not Type B** — it is a separate registry artifact.
+
+**`proj_type`** (semantic type inside `analysis_plan` rows, written by `ghostcrab_project`): `FACT` | `GOAL` | `STEP` | `CONSTRAINT`. The `projection_types` table also seeds `NOTE` for pack ranking, but **`ghostcrab_project` does not accept `NOTE`**.
+
+Product reference: `ghostcrab-personal-mcp/docs/explanation/renommage.md`, `vendor/mindbrain/docs/artifacts/artifact-model.md`.
+
+---
+
+## 1. Audit materialized projections and answer artifacts
+
+Use `audit_ghostcrab_projections.py` when you want to inspect what is already stored and, when a model contract is supplied, whether the graph and facets can support the planned projections.
 
 ```bash
 python3 starterkit/scripts/audit_ghostcrab_projections.py \
   --db data/ghostcrab.sqlite \
   --workspace my-workspace \
   --model generated/my_model/model_contract.json
+```
+
+Optional: compare planned `live_answer_view` entries from a seed file:
+
+```bash
+python3 starterkit/scripts/audit_ghostcrab_projections.py \
+  --db data/ghostcrab.sqlite \
+  --workspace my-workspace \
+  --answer-artifacts-seed generated/my-workspace/answer-artifacts.seed.jsonl
 ```
 
 For GhostCrab Pro PostgreSQL:
@@ -48,8 +67,20 @@ python3 starterkit/scripts/audit_ghostcrab_projections.py \
   --model artifacts/model_contract.json
 ```
 
-For PostgreSQL projects, the generated Markdown report also reminds agents of
-the mindCLI commands to use:
+### Personal operator commands (artifact registry)
+
+```bash
+gcp brain artifact list --workspace-id <ws> --kind analysis_plan
+gcp brain artifact list --workspace-id <ws> --kind live_answer_view
+gcp brain artifact list --workspace-id <ws> --kind answer_snapshot
+
+# After import + seed — refresh stale live views
+gcp brain artifact refresh live_answer_view__<slug>
+```
+
+### Pro operator commands (mindCLI)
+
+For PostgreSQL projects, the generated Markdown report also reminds agents of the mindCLI commands to use:
 
 ```bash
 DATABASE_URL="$GHOSTCRAB_DSN" go run ../mindbot/cmd/mindcli --json \
@@ -62,7 +93,7 @@ DATABASE_URL="$GHOSTCRAB_DSN" go run ../mindbot/cmd/mindcli --json \
   mb_pragma inspect --user coordination_bot --query "conflits BIM zone" --limit 8
 ```
 
-The `--model` argument is optional. When provided, the script compares planned projections in the model contract against materialized projection scopes.
+The `--model` argument is optional. When provided, the script compares planned projections in the model contract against materialized `analysis_plan` scopes.
 
 Outputs:
 
@@ -71,16 +102,18 @@ Outputs:
 
 The audit reports:
 
-- registered projection types from `projection_types`;
-- Type A declared projections by `scope`, `proj_type`, `status`, and `agent_id`;
-- Type B `ProjectionResult` rows by `projection_id`, name, confidence, and metadata;
-- custom projection types not registered in `projection_types`;
+- registered `proj_type` values from `projection_types`;
+- **`analysis_plan`** rows (`projections` table) by `scope`, `proj_type`, `status`, and `agent_id`;
+- **`answer_snapshot`** rows (`ProjectionResult` in graph) by `projection_id`, name, confidence, and metadata;
+- **`live_answer_view`** and **`evidence_pack`** rows from `mindbrain_answer_artifacts` (when table exists), grouped by `lifecycle`;
+- `stale_live_view_count` (informational — expected post-import until refresh);
+- custom `proj_type` values not registered in `projection_types`;
 - invalid JSON content in `projections.content`;
 - expired projections;
-- planned projection gaps when a model contract is supplied.
-- separate Type A and Type B gap counts:
-  - Type A gap = planned projection missing from `mb_pragma.projections`;
-  - Type B gap = planned projection missing from `graph.entity` as a calculated `ProjectionResult`;
+- planned gaps when a model contract or seed file is supplied:
+  - **`analysis_plan_gap`** — planned scope missing from `projections`;
+  - **`answer_snapshot_gap`** — planned projection missing from graph `ProjectionResult`;
+  - **`live_answer_view_gap`** — planned live view missing from registry (when `--answer-artifacts-seed` supplied);
 - graph quality when graph tables are available:
   - graph entity and relation counts;
   - orphan relation count;
@@ -88,6 +121,10 @@ The audit reports:
   - required schemas with no facet records;
   - required facets not observed in imported facet records;
   - a simple `quality_score` out of 100.
+
+Legacy summary keys (`type_a_declared_projection_count`, `type_b_projection_result_count`) are kept as aliases.
+
+---
 
 ## 2. Analyze projection candidates from ontology Markdown
 
@@ -180,18 +217,23 @@ python3 starterkit/scripts/analyze_projection_candidates.py \
 ```
 
 For YAML-first projects, `--projection-catalog` imports declared projections
-and `--manager-questions` imports natural-language business questions. Use
-`--recursive-markdown` only when the source reports are spread across nested
-Markdown folders.
+and `--manager-questions` imports natural-language business questions. Catalog entries may override routing:
+
+```yaml
+projections:
+  - name: pilotage_hebdomadaire
+    artifact_kind: live_answer_view   # default: analysis_plan
+    proj_type: STEP
+    scope: my-workspace:decisionnel:pilotage_hebdomadaire
+```
+
+Use `--recursive-markdown` only when the source reports are spread across nested Markdown folders.
 
 Materialization lookup adapts to the environment:
 
-- `--db-kind sqlite --db data/ghostcrab.sqlite` checks the starterkit SQLite
-  `projections` table.
-- `--db-kind postgres --postgres-dsn "$GHOSTCRAB_DSN"` checks GhostCrab Pro
-  PostgreSQL, including `mb_pragma.projections`.
-- `--db-kind auto` keeps SQLite compatibility and uses PostgreSQL when
-  `--postgres-dsn` is provided.
+- `--db-kind sqlite --db data/ghostcrab.sqlite` checks `projections` (`analysis_plan`) and `mindbrain_answer_artifacts` (`live_answer_view`).
+- `--db-kind postgres --postgres-dsn "$GHOSTCRAB_DSN"` checks GhostCrab Pro PostgreSQL, including `mb_pragma.projections`.
+- `--db-kind auto` keeps SQLite compatibility and uses PostgreSQL when `--postgres-dsn` is provided.
 - `--db-kind none` disables materialization lookup.
 
 The summary reports both row-level `materialized_count` and
@@ -210,7 +252,10 @@ Each candidate includes:
 - expected GhostCrab scope;
 - ontology family;
 - source file and source section;
-- suggested projection type (`FACT`, `STEP`, or `NOTE`);
+- **`suggested_artifact_kind`** (`analysis_plan` | `live_answer_view` | `answer_snapshot` | `evidence_pack`);
+- **`suggested_proj_type`** (`FACT`, `GOAL`, `STEP`, or `CONSTRAINT` — valid for `ghostcrab_project`);
+- **`materialization_target`** (`ghostcrab_project` | `answer_artifact_seed` | `review_only`);
+- **`materialization_warning`** when a type cannot be written via MCP;
 - retrieval jobs such as `summary`, `monitor`, `aggregate`, `graph_traversal`;
 - inferred data dependencies;
 - materialization status;
@@ -233,9 +278,9 @@ missing from the contract.
 
 ## Recommended workflow
 
-1. Run `analyze_projection_candidates.py` during Phase B after reading the ontology Markdown.
-2. Review candidates with the user and select the projections worth materializing.
-3. Materialize only projections that have a clear retrieval job and enough data.
-4. Run `audit_ghostcrab_projections.py` after materialization to verify what actually exists in GhostCrab.
+1. Run `analyze_projection_candidates.py` during Phase B1 after reading the ontology Markdown.
+2. Review candidates with the user — confirm **`artifact_kind`** and **`proj_type`** per row in `projection_model_validation.md`.
+3. Materialize `analysis_plan` rows via `ghostcrab_project`; load `live_answer_view` via `answer-artifacts.seed.jsonl` when needed.
+4. Run `audit_ghostcrab_projections.py` after import to verify registry + graph; refresh stale `live_answer_view` artifacts.
 
 This keeps the model provisional until the user has validated the retrieval contract, in line with the GhostCrab data architect freeze policy.

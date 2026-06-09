@@ -47,6 +47,23 @@ Références : `ghostcrab-personal-mcp/ontologies/immeuble-demo/core.yaml`, `exa
 
 ---
 
+## Agent prompt (FR) — fake-data métier (B2)
+
+```
+Avant le premier import bulk tabulaire (SOP5), souhaitez-vous :
+
+1. Générer des données fictives métier (recommandé sans source CRM/API)
+   — ../scripts/README_fake_business_data.md + ROUTE_MAP § B2
+
+2. Passer B2 (sources réelles déjà profilées et mappées)
+
+Choix ? (1 ou 2)
+```
+
+Enregistrer dans `../templates/import_path_choices.yaml` → `fake_data.choice`: `generate` | `skip`.
+
+---
+
 ## Agent prompt (FR) — tabulaire (C2.0)
 
 ```

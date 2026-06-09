@@ -17,6 +17,15 @@ tabular_path:
   confirmed_at: null
   notes: ""
 
+# Phase B2 — fake business data (before first bulk import if no real source yet)
+fake_data:
+  # generate | skip (real sources already validated)
+  choice: "generate"
+  confirmed_at: null
+  notes: ""
+  output_dir: "generated/<workspace_id>/import_ready"
+  script_readme: "../scripts/README_fake_business_data.md"
+
 # Optional: paths to generated artefacts per choice
 artefacts:
   linkml_ontology: "ontology/core.yaml"

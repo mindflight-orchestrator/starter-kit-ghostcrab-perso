@@ -44,10 +44,13 @@ Cette SOP ne remplace pas SOP2/SOP3. Elle ajoute la couche manquante pour mapper
 Ordre canonique:
 
 1. `SOP4_environment_bootstrap.md` — verifier l'environnement.
-2. `SOP1_ghostcrab_mcp.md` — comprendre le contrat MCP / DB.
-3. [SOP2_obsidian_ontologie.md](SOP2_obsidian_ontologie.md) — modeliser le workspace et ses ontologies.
-4. `SOP3_parsing_pipeline.md` — parser un vault documentaire.
-5. `SOP5_source_import_compiler.md` — compiler une source externe generique vers le modele.
+2. `SOP0_import_path_choices.md` — enregistrer les voies d'import.
+3. `SOP1_ghostcrab_mcp.md` — comprendre le contrat MCP / DB.
+4. [SOP2_obsidian_ontologie.md](SOP2_obsidian_ontologie.md) — modeliser le workspace et ses ontologies.
+5. Phase **B1** projections — [ROUTE_MAP § projections](ROUTE_MAP.md#route-projections).
+6. Phase **B2** fake-data metier — [../scripts/README_fake_business_data.md](../scripts/README_fake_business_data.md) (recommande avant premier bulk COPY).
+7. `SOP3_parsing_pipeline.md` — parser un vault documentaire (optionnel).
+8. `SOP5_source_import_compiler.md` — compiler une source externe generique vers le modele.
 
 Templates utilises:
 
@@ -68,6 +71,8 @@ Templates utilises:
 **Edition:** GhostCrab Pro (`ghostcrab-mcp`, PostgreSQL).
 
 **Sequence:** [SOP_SEQUENCE.md](SOP_SEQUENCE.md) Phase C2.
+
+**Prerequisite B2:** when no real CRM/ERP export exists yet, generate deterministic fake rows into `generated/<ws>/import_ready/` — see [ROUTE_MAP § B2](ROUTE_MAP.md#route-donnees-fictives-metier). Record `fake_data.choice` in `../templates/import_path_choices.yaml`.
 
 | Gate | Operator surface |
 |------|------------------|

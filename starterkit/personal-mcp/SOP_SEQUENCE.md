@@ -19,7 +19,7 @@
 
 ## How to use
 
-1. Phases **in order** (A → B0 → B → **B1** → C / C2).
+1. Phases **in order** (A → B0 → B → **B1** → **B2** → C / C2).
 2. Load **only** files in this folder + `../templates/` + `../scripts/`.
 3. `edition: personal-mcp` in `../templates/import_manifest.yaml`.
 
@@ -29,13 +29,14 @@ flowchart LR
   B0[Phase B0 SOP0]
   B[Phase B SOP1+SOP2]
   B1[Phase B1 projections]
+  B2[Phase B2 fake-data]
   C3[Phase C opt SOP3]
   C6[Phase C SOP6]
   C2[Phase C2 SOP5]
-  A --> B0 --> B --> B1
-  B1 --> C3 --> C6
-  B1 --> C6
-  B1 --> C2
+  A --> B0 --> B --> B1 --> B2
+  B2 --> C3 --> C6
+  B2 --> C6
+  B2 --> C2
 ```
 
 ---
@@ -71,9 +72,20 @@ flowchart LR
 
 | Step | Document / tool | Done when |
 |------|-------------------|-----------|
-| B1 prep | [ROUTE_MAP § projections](ROUTE_MAP.md#route-projections), [../scripts/README_projection_tools.md](../scripts/README_projection_tools.md) | `projection_model_validation.md` reviewed |
-| B1 write | SOP2 §7.6–7.7, `ghostcrab_project` | catalogue Type A scopes declared |
-| B1 audit (post-import) | `audit_ghostcrab_projections.py`, SOP5 gate 7 | pack + projection_get smoke OK |
+| B1 prep | [ROUTE_MAP § projections](ROUTE_MAP.md#route-projections), [../scripts/README_projection_tools.md](../scripts/README_projection_tools.md) | `projection_model_validation.md` reviewed — `artifact_kind` + `proj_type` confirmed |
+| B1 write | SOP2 §7.6–7.7, `ghostcrab_project` | `analysis_plan` scopes declared; optional `live_answer_view` seed |
+| B1 audit (post-import) | `audit_ghostcrab_projections.py`, SOP5 gate 7 | pack + projection_get smoke OK; refresh stale `live_answer_view` if seeded |
+
+---
+
+## Phase B2 — Fake business data (before first bulk import)
+
+| Step | Document / tool | Done when |
+|------|-------------------|-----------|
+| B2 | [ROUTE_MAP § fake-data](ROUTE_MAP.md#route-donnees-fictives-metier), [../scripts/README_fake_business_data.md](../scripts/README_fake_business_data.md) | `import_ready/` + gates 2–4 dry-run OK |
+| B2 gates | `profile_source.mjs`, `validate_mapping_contract.mjs`, `transform_source_to_jsonb.mjs` | JSONL preview clean |
+
+Skip B2 only when real tabular sources are already validated (document in `import_path_choices.yaml`).
 
 ---
 

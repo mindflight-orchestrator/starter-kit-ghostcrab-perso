@@ -12,7 +12,7 @@ Pour changer de piste : [../EDITIONS.md](../EDITIONS.md).
 
 ## How to use
 
-1. Phases **in order** (A → B0 → B → **B1** → C / C2).
+1. Phases **in order** (A → B0 → B → **B1** → **B2** → C / C2).
 2. Load **only** files in this folder + `../templates/` + `../scripts/`.
 3. `edition: pro-mcp` in `../templates/import_manifest.yaml`.
 
@@ -22,12 +22,14 @@ flowchart LR
   B0[Phase B0 SOP0]
   B[Phase B SOP1+SOP2]
   B1[Phase B1 projections]
+  B2[Phase B2 fake-data]
   C3[Phase C SOP3]
   C6[Phase C opt SOP6]
   C2[Phase C2 SOP5]
-  A --> B0 --> B --> B1 --> C3
-  B1 --> C6
-  B1 --> C2
+  A --> B0 --> B --> B1 --> B2
+  B2 --> C3
+  B2 --> C6
+  B2 --> C2
   C3 --> C6
 ```
 
@@ -62,9 +64,18 @@ flowchart LR
 
 | Step | Document / tool | Done when |
 |------|-------------------|-----------|
-| B1 prep | [ROUTE_MAP § projections](ROUTE_MAP.md#route-projections), [../scripts/README_projection_tools.md](../scripts/README_projection_tools.md) | candidates + user validation |
-| B1 write | SOP2 §7.6–7.7, `ghostcrab_project` or SQL post-COPY | Type A catalogue populated |
-| B1 audit | mindCLI `mb_pragma`, `audit_ghostcrab_projections.py` | gaps Type A/B reviewed |
+| B1 prep | [ROUTE_MAP § projections](ROUTE_MAP.md#route-projections), [../scripts/README_projection_tools.md](../scripts/README_projection_tools.md) | candidates + user validation — `artifact_kind` confirmed |
+| B1 write | SOP2 §7.6–7.7, `ghostcrab_project` or SQL post-COPY | `analysis_plan` catalogue populated |
+| B1 audit | mindCLI `mb_pragma`, `audit_ghostcrab_projections.py` | gaps `analysis_plan` / `answer_snapshot` reviewed |
+
+---
+
+## Phase B2 — Fake business data
+
+| Step | Document / tool | Done when |
+|------|-------------------|-----------|
+| B2 | [ROUTE_MAP § fake-data](ROUTE_MAP.md#route-donnees-fictives-metier), [../scripts/README_fake_business_data.md](../scripts/README_fake_business_data.md) | `import_ready/` + COPY migrations planned |
+| B2 gates | StarterKit dry-run scripts | mapping + transform OK before COPY |
 
 ---
 

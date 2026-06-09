@@ -20,6 +20,8 @@
 | MCP incrémental (SOP0) | Seed unitaire | SOP2 §7 |
 | Phase B — specs OK | **Préparer projections** | [§ Route projections](#route-projections) + `../scripts/README_projection_tools.md` |
 | Projections validées | Matérialiser catalogue | `ghostcrab_project` + confirmation utilisateur |
+| Phase B1 done | **Générer fake-data métier** | [§ Données fictives B2](#route-donnees-fictives-metier) + `../scripts/README_fake_business_data.md` |
+| Fake-data prêtes | Import structured-import | [SOP5](SOP5_structured_import.md) gates 0–6 |
 | Phase B done | Vault Obsidian à parser | [SOP3](SOP3_parsing_pipeline.md) |
 | Corpus documents | Bulk `gcp brain document` | [SOP6](SOP6_gcp_document_import.md) |
 | CSV/API/tabulaire | structured-import | [SOP5](SOP5_structured_import.md) |
@@ -34,9 +36,10 @@ flowchart LR
   SOP4[Phase A SOP4] --> SOP0[Phase B0 SOP0]
   SOP0 --> SOP1B[Phase B SOP1+SOP2]
   SOP1B --> SOP1proj[Phase B1 projections]
-  SOP1proj --> SOP3[Phase C opt SOP3]
+  SOP1proj --> SOP2fake[Phase B2 fake-data]
+  SOP2fake --> SOP5C2[Phase C2 SOP5 import]
+  SOP2fake --> SOP3[Phase C opt SOP3]
   SOP1B --> SOP6[Phase C SOP6]
-  SOP1B --> SOP5[Phase C2 SOP5]
   SOP3 --> SOP6
 ```
 
@@ -46,6 +49,7 @@ flowchart LR
 | B0 | SOP0 | `import_path_choices.yaml` | choix enregistrés |
 | B | SOP1 + SOP2 | MCP + LinkML ou incrémental | `ghostcrab_coverage` baseline |
 | **B1** | scripts projections | candidats + validation humaine | catalogue déclaré prêt |
+| **B2** | fake-data métier | CSV `import_ready/` + manifest | gates 2–4 dry-run OK |
 | C (opt.) | SOP3 | parsing vault → JSONB | validator OK |
 | C | SOP6 | `gcp brain document` | pipeline document OK |
 | C2 | SOP5 | `gcp brain structured-import` | facets + reindex |
@@ -59,14 +63,24 @@ Les projections sont le **contrat de retrieval** agent (questions métier → sc
 
 **Doc outils:** [../scripts/README_projection_tools.md](../scripts/README_projection_tools.md)
 
-### Deux modes GhostCrab
+### Taxonomie answer artifacts (canonique)
 
-| Mode | Stockage Personal | Lecture agent |
-|------|-------------------|---------------|
-| **Type A — catalogue déclaré** | table `projections` | `ghostcrab_pack`, `ghostcrab_project` |
-| **Type B — snapshot calculé** | `graph_entity` (`ProjectionResult`) | `ghostcrab_projection_get` |
+Route agents by **`artifact_kind`** first. Legacy Type A/B = compatibilité wire only.
 
-Un catalogue Type A sain suffit pour démarrer ; Type B = rapport matérialisé avec preuves graphe.
+| `artifact_kind` | Stockage Personal | Lecture agent |
+|-----------------|-------------------|---------------|
+| `analysis_plan` | table `projections` | `ghostcrab_pack`, `ghostcrab_project` |
+| `live_answer_view` | `mindbrain_answer_artifacts` | `ghostcrab_live_refresh`, `gcp brain artifact refresh` |
+| `answer_snapshot` | `graph_entity` (`ProjectionResult`) | `ghostcrab_projection_get` |
+| `evidence_pack` | `mindbrain_answer_artifacts` | `ghostcrab_artifact_get` |
+
+**Legacy:** Type A → `analysis_plan` · Type B → `answer_snapshot` · **`live_answer_view` n'est pas Type B**.
+
+**`proj_type`** (`ghostcrab_project`) : `FACT` | `GOAL` | `STEP` | `CONSTRAINT` — pas `NOTE` (pack-ranking seulement).
+
+Référence produit : `ghostcrab-personal-mcp/docs/explanation/renommage.md`
+
+Un catalogue `analysis_plan` sain suffit pour démarrer ; `answer_snapshot` = rapport figé avec preuves graphe.
 
 ### Phase B1 — Préparer (avant import massif)
 
@@ -82,7 +96,7 @@ python3 ../scripts/analyze_projection_candidates.py \
   --write-agent-context
 ```
 
-3. Revue humaine : `generated/projection_candidates/projection_model_validation.md` — valider scope, `proj_type`, jobs de retrieval.
+3. Revue humaine : `generated/projection_candidates/projection_model_validation.md` — valider scope, **`artifact_kind`**, `proj_type`, jobs de retrieval.
 4. **Gate freeze :** pas de matérialisation sans confirmation utilisateur (aligné SOP2 Model Proposal).
 
 Artefacts : `projection_candidates.json`, `projection_model_validation.md`, optionnel `specs/projection_catalog.yaml`.
@@ -92,16 +106,17 @@ Artefacts : `projection_candidates.json`, `projection_model_validation.md`, opti
 Par projection retenue, via MCP (unitaire) :
 
 ```json
-// ghostcrab_project
+// ghostcrab_project — analysis_plan row
 {
-  "workspace_id": "<ws>",
-  "source_ref": "note:decisions-cms-choice",
-  "proj_type": "AUDIT_DECISION",
-  "scope": "<ws>:refonte-acme",
+  "scope": "<ws>:decisionnel:pilotage_hebdomadaire",
+  "content": "Question métier + jobs de retrieval",
+  "proj_type": "STEP",
   "status": "active",
-  "metadata": { "retrieval_jobs": ["summary", "monitor"] }
+  "agent_id": "agent:self"
 }
 ```
+
+Pour `live_answer_view` : charger `answer-artifacts.seed.jsonl` puis `gcp brain artifact refresh live_answer_view__<slug>`.
 
 Pendant parsing (SOP3/SOP6), le JSONB SOP2 §4.3 peut porter un `projection_signal` — validator obligatoire avant injection.
 
@@ -112,7 +127,8 @@ En bulk tabulaire (SOP5 gate 7) : vérifier `ghostcrab_pack` et `ghostcrab_proje
 | Besoin | Outil |
 |--------|-------|
 | Contexte opérationnel courant | `ghostcrab_pack(scope="<ws>:<scope>")` |
-| Rapport calculé (Type B) | `ghostcrab_projection_get` |
+| Rapport figé (`answer_snapshot`) | `ghostcrab_projection_get` |
+| Vue live refreshable | `gcp brain artifact refresh live_answer_view__<slug>` |
 | Recherche preuves | `ghostcrab_search`, `ghostcrab_count` |
 | Couverture | `ghostcrab_coverage` |
 
@@ -124,12 +140,74 @@ Configurer les smoke tests dans `../templates/consumer_contract.yaml` (`requires
 python3 ../scripts/audit_ghostcrab_projections.py \
   --db "$GHOSTCRAB_SQLITE_PATH" \
   --workspace <workspace_id> \
-  --model generated/<ws>/model_contract.json
+  --model generated/<ws>/model_contract.json \
+  --answer-artifacts-seed generated/<ws>/answer-artifacts.seed.jsonl
 ```
 
-Rapports : `generated/projection_audits/projection_audit_<ws>.md` — gaps Type A/B, qualité graphe, types non enregistrés.
+Rapports : `generated/projection_audits/projection_audit_<ws>.md` — gaps `analysis_plan` / `answer_snapshot` / `live_answer_view`, qualité graphe, types non enregistrés.
 
 Puis gate 9 : `../scripts/audit_import_pipeline.mjs` + `validate_consumer_contract.mjs`.
+
+**Answer Artifacts post-import :** charger `answer-artifacts.seed.jsonl` pour `live_answer_view` / `evidence_pack` — rafraîchir les vues (`stale` → compute via `gcp brain artifact refresh`). Voir README fake-data et `renommage.md`.
+
+---
+
+## Route données fictives métier (Phase B2)
+
+Génération **déterministe** de lignes métier pour valider modèle, import et projections **sans source externe** (pattern Serenity).
+
+**Doc:** [../scripts/README_fake_business_data.md](../scripts/README_fake_business_data.md)
+
+### Objectif
+
+Produire des faits et arêtes **schema-valid** suffisants pour :
+
+- passer SOP5 `structured-import validate/apply` ;
+- tester les scopes projection B1 (ex. `appels_fonds_emis` avec enums `FDRO`/`FDRS`/`FDROP`, pas des valeurs génériques) ;
+- alimenter `ghostcrab_search` / `ghostcrab_pack` post-import.
+
+### Séquence B2
+
+```text
+Contrat B (model_contract.json)
+  → script Python projet-local OU CSV manuels alignés mapping
+  → generated/<ws>/fake_data/*.csv
+  → generated/<ws>/import_ready/facets_import.csv + edges_import.csv
+  → profile_source.mjs + validate_mapping + transform dry-run
+  → SOP5 structured-import
+  → matérialiser / rafraîchir projections B1
+```
+
+### Gates StarterKit (dry-run avant apply)
+
+| Gate | Script |
+|------|--------|
+| Contrat | `export_model_contract.mjs --exported ...` |
+| Profil source | `profile_source.mjs` sur `fake_data/` |
+| Mapping | `validate_mapping_contract.mjs` |
+| JSONB | `transform_source_to_jsonb.mjs` |
+
+### Import Personal (C2 — enchaîne B2)
+
+```bash
+# Arrêter MCP si écriture DB directe
+gcp brain structured-import validate \
+  --workspace-id <ws> --model generated/<ws>/model/model_contract.json \
+  --mapping ../templates/mapping_external_to_canonical.yaml \
+  --input generated/<ws>/import_ready/
+
+gcp brain structured-import register-semantics --workspace-id <ws> ...
+gcp brain structured-import apply --workspace-id <ws> ...
+gcp brain structured-import reindex --workspace-id <ws> --scope all
+```
+
+### Pièges (Serenity)
+
+- **Même SQLite** que `ghostcrab_status` (`GHOSTCRAB_SQLITE_PATH`).
+- **Qualité enum** — fake-data incohérentes ⇒ projections « calculables » mais métier faux.
+- **Import ≠ projections** — après apply, exécuter matérialisation B1.
+
+**Done when :** `import_manifest.json` rempli ; `ghostcrab_count` > 0 sur schémas core ; gate 7 projections smoke OK.
 
 ---
 
@@ -162,6 +240,7 @@ document_path: gcp_document
 | **Projections — écrire** | `ghostcrab_project` (unitaire) |
 | **Projections — lire** | `ghostcrab_pack`, `ghostcrab_projection_get` |
 | **Projections — auditer** | `audit_ghostcrab_projections.py` |
+| **Fake-data métier (B2)** | script Python projet + gates `profile_source` / `transform` |
 | Ontologie formelle | `gcp brain ontology compile` |
 | Documents bulk | `gcp brain document` (SOP6) |
 | Tabulaire bulk | `gcp brain structured-import` (SOP5) |
@@ -189,10 +268,11 @@ Clôture : `../templates/import_manifest.yaml` (`edition: personal-mcp`).
 1. [SOP4](SOP4_environment_bootstrap.md)
 2. [SOP0](SOP0_import_path_choices.md)
 3. [SOP1](SOP1_ghostcrab_mcp.md) + [SOP2](SOP2_obsidian_ontologie.md)
-4. **Projections :** candidats → validation → `ghostcrab_project` → [§ Route projections](#route-projections)
-5. Optionnel : [SOP3](SOP3_parsing_pipeline.md) → [SOP6](SOP6_gcp_document_import.md)
-6. Optionnel : [SOP5](SOP5_structured_import.md)
-7. Audit : `audit_ghostcrab_projections.py` + gate 9
+4. **Projections :** candidats → validation → [§ Route projections](#route-projections)
+5. **Fake-data métier (B2) :** [§ Données fictives](#route-donnees-fictives-metier) → `import_ready/`
+6. **Import :** [SOP5](SOP5_structured_import.md) structured-import
+7. Optionnel : [SOP3](SOP3_parsing_pipeline.md) → [SOP6](SOP6_gcp_document_import.md)
+8. Audit : `audit_ghostcrab_projections.py` + gate 9
 
 ---
 

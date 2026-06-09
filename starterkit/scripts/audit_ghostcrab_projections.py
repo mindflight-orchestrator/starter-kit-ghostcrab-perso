@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Audit GhostCrab projections and graph quality.
+"""Audit GhostCrab projections, answer artifacts, and graph quality.
 
-The audit answers five questions:
-- what Type A projections are declared in mb_pragma.projections / projections;
-- what Type B projection results are materialized in graph.entity;
-- which planned projections from a model contract are missing;
+The audit answers:
+- what analysis_plan rows are declared in projections / mb_pragma.projections;
+- what live_answer_view / evidence_pack rows exist in mindbrain_answer_artifacts;
+- what answer_snapshot rows are materialized in graph.entity (ProjectionResult);
+- which planned projections from a model contract or seed file are missing;
 - whether projection content is parseable and active;
 - whether graph edge types required by projections are populated;
 - whether schemas/facets required by projections are represented in data.
@@ -91,6 +92,107 @@ def load_planned_projections(model: dict[str, Any], workspace_id: str | None) ->
                         }
                     )
     return planned
+
+
+def load_planned_live_views(seed_path: Path | None, workspace_id: str | None) -> list[dict[str, Any]]:
+    if not seed_path or not seed_path.exists():
+        return []
+    planned: list[dict[str, Any]] = []
+    for line_no, line in enumerate(seed_path.read_text(encoding="utf-8").splitlines(), 1):
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        try:
+            item = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(item, dict):
+            continue
+        kind = str(item.get("artifact_kind") or "live_answer_view")
+        if kind != "live_answer_view":
+            continue
+        slug = str(item.get("slug") or item.get("artifact_id", "").split("__")[-1] or f"seed_{line_no}")
+        artifact_id = str(item.get("artifact_id") or f"live_answer_view__{slug}")
+        ws = str(item.get("workspace_id") or workspace_id or "")
+        planned.append(
+            {
+                "artifact_id": artifact_id,
+                "slug": slug,
+                "workspace_id": ws,
+                "public_label": str(item.get("public_label") or slug),
+                "scope": str(item.get("scope") or ""),
+            }
+        )
+    return planned
+
+
+def normalize_answer_artifact_row(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "artifact_id": str(row.get("artifact_id") or ""),
+        "slug": str(row.get("slug") or ""),
+        "workspace_id": row.get("workspace_id"),
+        "agent_id": row.get("agent_id"),
+        "scope": row.get("scope"),
+        "artifact_kind": str(row.get("artifact_kind") or ""),
+        "public_label": str(row.get("public_label") or ""),
+        "lifecycle": str(row.get("lifecycle") or ""),
+        "state": str(row.get("state") or ""),
+        "current_version": int(row.get("current_version") or 1),
+        "legacy_ref": row.get("legacy_ref"),
+    }
+
+
+def fetch_answer_artifacts_sqlite(conn: sqlite3.Connection, workspace_id: str | None) -> list[dict[str, Any]]:
+    if not sqlite_table_exists(conn, "mindbrain_answer_artifacts"):
+        return []
+    params: tuple[Any, ...] = ()
+    where = ""
+    if workspace_id:
+        where = "WHERE workspace_id = ? OR (artifact_kind = 'analysis_plan' AND (scope = ? OR scope LIKE ?))"
+        params = (workspace_id, workspace_id, f"{workspace_id}:%")
+    rows = sqlite_rows(
+        conn,
+        f"""
+        SELECT artifact_id, slug, workspace_id, agent_id, scope, artifact_kind,
+               public_label, lifecycle, state, current_version, legacy_ref
+        FROM mindbrain_answer_artifacts
+        {where}
+        ORDER BY artifact_kind, slug
+        """,
+        params,
+    )
+    return [normalize_answer_artifact_row(dict(row)) for row in rows]
+
+
+def fetch_answer_artifacts_postgres(cur: Any, workspace_id: str | None) -> list[dict[str, Any]]:
+    for schema in ("public", "mb_pragma"):
+        if not pg_table_exists(cur, schema, "mindbrain_answer_artifacts"):
+            continue
+        table = f"{schema}.mindbrain_answer_artifacts"
+        if workspace_id:
+            cur.execute(
+                f"""
+                SELECT artifact_id, slug, workspace_id, agent_id, scope, artifact_kind,
+                       public_label, lifecycle, state, current_version, legacy_ref
+                FROM {table}
+                WHERE workspace_id = %s
+                   OR (artifact_kind = 'analysis_plan' AND (scope = %s OR scope LIKE %s))
+                ORDER BY artifact_kind, slug
+                """,
+                (workspace_id, workspace_id, f"{workspace_id}:%"),
+            )
+        else:
+            cur.execute(
+                f"""
+                SELECT artifact_id, slug, workspace_id, agent_id, scope, artifact_kind,
+                       public_label, lifecycle, state, current_version, legacy_ref
+                FROM {table}
+                ORDER BY artifact_kind, slug
+                """
+            )
+        columns = [desc[0] for desc in cur.description]
+        return [normalize_answer_artifact_row(dict(zip(columns, row))) for row in cur.fetchall()]
+    return []
 
 
 def sqlite_rows(conn: sqlite3.Connection, sql: str, params: tuple[Any, ...] = ()) -> list[sqlite3.Row]:
@@ -246,11 +348,14 @@ def fetch_sqlite(db_path: Path, workspace_id: str | None) -> dict[str, Any]:
                 for row in sqlite_rows(conn, f"SELECT {relation_col} AS relation_type FROM graph_relation {where}", params)
             ]
 
+        answer_artifacts = fetch_answer_artifacts_sqlite(conn, workspace_id)
+
     return {
         "backend": "sqlite",
         "available": True,
         "projection_types": projection_types,
         "projections": projection_rows,
+        "answer_artifacts": answer_artifacts,
         "schema_counts": dict(schema_counts),
         "facet_keys": sorted(facet_keys),
         "graph": {
@@ -424,6 +529,8 @@ def fetch_postgres(postgres_dsn: str, workspace_id: str | None) -> dict[str, Any
                 ]
                 orphan_relation_count = sum(1 for row in graph_relations if not row["source_name"] or not row["target_name"])
 
+            answer_artifacts = fetch_answer_artifacts_postgres(cur, workspace_id)
+
     normalized = []
     for row in projections:
         normalized.append(
@@ -447,6 +554,7 @@ def fetch_postgres(postgres_dsn: str, workspace_id: str | None) -> dict[str, Any
         "available": True,
         "projection_types": projection_types,
         "projections": normalized,
+        "answer_artifacts": answer_artifacts,
         "schema_counts": dict(schema_counts),
         "facet_keys": sorted(facet_keys),
         "graph": {
@@ -461,7 +569,16 @@ def fetch_postgres(postgres_dsn: str, workspace_id: str | None) -> dict[str, Any
 
 def fetch_backend(db_kind: str, db_path: Path, postgres_dsn: str, workspace_id: str | None) -> dict[str, Any]:
     if db_kind == "none":
-        return {"backend": "none", "available": False, "projection_types": [], "projections": [], "schema_counts": {}, "facet_keys": [], "graph": {"entity_count": 0, "relation_count": 0, "relations": [], "orphan_relation_count": 0}}
+        return {
+            "backend": "none",
+            "available": False,
+            "projection_types": [],
+            "projections": [],
+            "answer_artifacts": [],
+            "schema_counts": {},
+            "facet_keys": [],
+            "graph": {"entity_count": 0, "relation_count": 0, "relations": [], "orphan_relation_count": 0, "projection_results": []},
+        }
     if db_kind == "postgres":
         return fetch_postgres(postgres_dsn, workspace_id)
     if db_kind == "sqlite":
@@ -480,10 +597,33 @@ def projection_name_from_scope(scope: str | None) -> str:
     return str(scope).split(":")[-1]
 
 
-def audit(db_path: Path, workspace_id: str | None, model_path: Path | None, db_kind: str, postgres_dsn: str, mindcli_path: str = DEFAULT_MINDCLI) -> dict[str, Any]:
+def audit(
+    db_path: Path,
+    workspace_id: str | None,
+    model_path: Path | None,
+    db_kind: str,
+    postgres_dsn: str,
+    mindcli_path: str = DEFAULT_MINDCLI,
+    answer_artifacts_seed: Path | None = None,
+) -> dict[str, Any]:
     model = load_model_contract(model_path)
     planned = load_planned_projections(model, workspace_id)
+    planned_live_views = load_planned_live_views(answer_artifacts_seed, workspace_id)
     backend = fetch_backend(db_kind, db_path, postgres_dsn, workspace_id)
+
+    answer_artifacts = backend.get("answer_artifacts") or []
+    live_views = [row for row in answer_artifacts if row.get("artifact_kind") == "live_answer_view"]
+    evidence_packs = [row for row in answer_artifacts if row.get("artifact_kind") == "evidence_pack"]
+    registry_analysis_plans = [row for row in answer_artifacts if row.get("artifact_kind") == "analysis_plan"]
+    stale_live_views = [row for row in live_views if row.get("lifecycle") == "stale"]
+    materialized_live_view_ids = {row.get("artifact_id") for row in live_views if row.get("artifact_id")}
+    materialized_live_view_slugs = {row.get("slug") for row in live_views if row.get("slug")}
+    planned_live_materialized = [
+        item
+        for item in planned_live_views
+        if item["artifact_id"] in materialized_live_view_ids or item["slug"] in materialized_live_view_slugs
+    ]
+    planned_live_missing = [item for item in planned_live_views if item not in planned_live_materialized]
 
     now = datetime.now(tz=timezone.utc)
     projections = []
@@ -530,12 +670,12 @@ def audit(db_path: Path, workspace_id: str | None, model_path: Path | None, db_k
             }
         )
 
-    # Type A = declared/working-memory projection rows.
+    # analysis_plan = declared/working-memory projection rows (legacy Type A).
     materialized_scopes = {row.get("scope") for row in backend.get("projections", []) if row.get("scope")}
     planned_missing = [item for item in planned if item["expected_scope"] not in materialized_scopes]
     planned_materialized = [item for item in planned if item["expected_scope"] in materialized_scopes]
 
-    # Type B = graph-level calculated projection snapshots / report results.
+    # answer_snapshot = graph-level calculated projection snapshots (legacy Type B).
     type_b_results = backend.get("graph", {}).get("projection_results", [])
     type_b_projection_ids = {row.get("projection_id") for row in type_b_results if row.get("projection_id")}
     planned_type_b_materialized = [item for item in planned if item["name"] in type_b_projection_ids or projection_name_from_scope(item["expected_scope"]) in type_b_projection_ids]
@@ -572,19 +712,33 @@ def audit(db_path: Path, workspace_id: str | None, model_path: Path | None, db_k
         "mindcli_path": mindcli_path,
         "workspace_filter": workspace_id,
         "model_path": str(model_path) if model_path else "",
+        "answer_artifacts_seed": str(answer_artifacts_seed) if answer_artifacts_seed else "",
         "generated_at": datetime.now(tz=timezone.utc).isoformat(),
         "summary": {
             "quality_score": quality_score,
             "projection_count": len(projections),
+            "analysis_plan_row_count": len(projections),
             "type_a_declared_projection_count": len(projections),
+            "answer_snapshot_count": len(type_b_results),
             "type_b_projection_result_count": len(type_b_results),
+            "live_answer_view_count": len(live_views),
+            "evidence_pack_count": len(evidence_packs),
+            "registry_analysis_plan_count": len(registry_analysis_plans),
+            "stale_live_view_count": len(stale_live_views),
             "planned_projection_count": len(planned),
             "planned_materialized_count": len(planned_materialized),
             "planned_missing_count": len(planned_missing),
             "planned_type_a_materialized_count": len(planned_materialized),
             "planned_type_a_missing_count": len(planned_missing),
+            "planned_analysis_plan_materialized_count": len(planned_materialized),
+            "planned_analysis_plan_missing_count": len(planned_missing),
             "planned_type_b_materialized_count": len(planned_type_b_materialized),
             "planned_type_b_missing_count": len(planned_type_b_missing),
+            "planned_answer_snapshot_materialized_count": len(planned_type_b_materialized),
+            "planned_answer_snapshot_missing_count": len(planned_type_b_missing),
+            "planned_live_view_count": len(planned_live_views),
+            "planned_live_view_materialized_count": len(planned_live_materialized),
+            "planned_live_view_missing_count": len(planned_live_missing),
             "graph_entity_count": graph.get("entity_count", 0),
             "graph_relation_count": graph.get("relation_count", 0),
             "orphan_relation_count": graph.get("orphan_relation_count", 0),
@@ -605,30 +759,57 @@ def audit(db_path: Path, workspace_id: str | None, model_path: Path | None, db_k
         },
         "allowed_projection_types": backend.get("projection_types", []),
         "projections": projections,
+        "answer_artifacts": answer_artifacts,
         "type_b_projection_results": type_b_results,
         "quality_flags": {
             "invalid_json_projection_ids": invalid_json,
             "expired_projection_ids": expired,
             "custom_projection_types_not_registered": sorted(custom_types),
+            "stale_live_answer_view_ids": [row.get("artifact_id") for row in stale_live_views],
             "missing_required_edge_types": missing_required_edge_types,
             "required_schemas_without_records": required_schemas_without_records,
             "required_facets_not_observed": required_facets_not_observed,
             "orphan_relation_count": graph.get("orphan_relation_count", 0),
         },
         "planned_projection_gap": {
-            "mode": "type_a_declared_projections",
+            "mode": "analysis_plan",
+            "legacy_mode": "type_a_declared_projections",
+            "planned_count": len(planned),
+            "materialized_count": len(planned_materialized),
+            "missing_count": len(planned_missing),
+            "missing_by_ontology": {key: value for key, value in sorted(missing_by_family.items())},
+        },
+        "analysis_plan_gap": {
+            "mode": "analysis_plan",
             "planned_count": len(planned),
             "materialized_count": len(planned_materialized),
             "missing_count": len(planned_missing),
             "missing_by_ontology": {key: value for key, value in sorted(missing_by_family.items())},
         },
         "type_b_projection_result_gap": {
-            "mode": "type_b_graph_projection_results",
+            "mode": "answer_snapshot",
+            "legacy_mode": "type_b_graph_projection_results",
             "planned_count": len(planned),
             "materialized_count": len(planned_type_b_materialized),
             "missing_count": len(planned_type_b_missing),
             "available_projection_ids": sorted(type_b_projection_ids),
             "missing_projection_ids": [item["name"] for item in planned_type_b_missing],
+        },
+        "answer_snapshot_gap": {
+            "mode": "answer_snapshot",
+            "planned_count": len(planned),
+            "materialized_count": len(planned_type_b_materialized),
+            "missing_count": len(planned_type_b_missing),
+            "available_projection_ids": sorted(type_b_projection_ids),
+            "missing_projection_ids": [item["name"] for item in planned_type_b_missing],
+        },
+        "live_answer_view_gap": {
+            "mode": "live_answer_view",
+            "planned_count": len(planned_live_views),
+            "materialized_count": len(planned_live_materialized),
+            "missing_count": len(planned_live_missing),
+            "missing_artifact_ids": [item["artifact_id"] for item in planned_live_missing],
+            "note": "stale live_answer_view after import is expected until gcp brain artifact refresh",
         },
     }
 
@@ -661,6 +842,7 @@ def write_markdown(report: dict[str, Any], path: Path) -> None:
         f"- mindCLI path: `{report.get('mindcli_path') or 'n/a'}`",
         f"- Workspace filter: `{report['workspace_filter'] or 'all'}`",
         f"- Model: `{report['model_path'] or 'n/a'}`",
+        f"- Answer artifacts seed: `{report.get('answer_artifacts_seed') or 'n/a'}`",
         f"- Generated at: `{report['generated_at']}`",
         "",
         "## Summary",
@@ -672,16 +854,36 @@ def write_markdown(report: dict[str, Any], path: Path) -> None:
     lines.extend(
         [
             "",
-            "## Projection Modes",
+            "## Answer artifact taxonomy",
             "",
-            "GhostCrab uses two practical projection modes:",
+            "Route agents by **`artifact_kind`** first. Legacy Type A/B labels are compatibility only.",
             "",
-            "- **Type A / declared projection**: rows in `mb_pragma.projections` (or SQLite `projections`). This is the JSONB contract used by `ghostcrab_pack`, `mb_pragma.pragma_pack_context`, and mindCLI. It describes the business question, required schemas, facets, edges, and retrieval jobs.",
-            "- **Type B / graph ProjectionResult**: rows in `graph.entity` where `type = 'ProjectionResult'`. This is a calculated snapshot/report with evidence links, read by `ghostcrab_projection_get` / `mb_ontology.ghostcrab_projection_get`.",
+            "| `artifact_kind` | Storage | Legacy |",
+            "|-----------------|---------|--------|",
+            "| `analysis_plan` | `projections` | Type A / `projection_type_a` |",
+            "| `live_answer_view` | `mindbrain_answer_artifacts` | *(new — not Type B)* |",
+            "| `answer_snapshot` | `graph.entity` (`ProjectionResult`) | Type B / `projection_type_b` |",
+            "| `evidence_pack` | `mindbrain_answer_artifacts` | evidence links |",
             "",
-            "A healthy Type A count means the projection catalogue is available to agents. A zero Type B count does not mean Type A is missing; it means no calculated graph snapshot has been written for those projections.",
+            "Zero `answer_snapshot` rows does not mean the catalogue is missing when `analysis_plan` rows exist.",
+            "`stale` `live_answer_view` after import is expected until `gcp brain artifact refresh`.",
         ]
     )
+
+    if report["backend"] == "sqlite":
+        workspace = report.get("workspace_filter") or "<workspace_id>"
+        lines.extend(
+            [
+                "",
+                "## Personal operator commands",
+                "",
+                "```bash",
+                f"gcp brain artifact list --workspace-id {workspace} --kind analysis_plan",
+                f"gcp brain artifact list --workspace-id {workspace} --kind live_answer_view",
+                f"gcp brain artifact refresh live_answer_view__<slug>",
+                "```",
+            ]
+        )
 
     if report["backend"] == "postgres":
         commands = mindcli_command_examples(report)
@@ -706,14 +908,25 @@ def write_markdown(report: dict[str, Any], path: Path) -> None:
     for key, value in report["counts"]["graph_relations_by_type"].items():
         lines.append(f"- `{key}`: {value}")
 
-    lines.extend(["", "## Type A Declared Projections", ""])
+    lines.extend(["", "## analysis_plan rows (projections table)", ""])
     for item in report["projections"]:
         lines.append(
             f"- `{item['scope'] or '(no scope)'}` | `{item['proj_type']}` | "
             f"`{item['status']}` | `{item['agent_id']}`"
         )
 
-    lines.extend(["", "## Type B Projection Results", ""])
+    lines.extend(["", "## Answer artifacts (mindbrain_answer_artifacts)", ""])
+    artifacts = report.get("answer_artifacts") or []
+    if artifacts:
+        for item in artifacts:
+            lines.append(
+                f"- `{item.get('artifact_id')}` | `{item.get('artifact_kind')}` | "
+                f"`{item.get('lifecycle')}` | `{item.get('state')}` | v{item.get('current_version')}"
+            )
+    else:
+        lines.append("- n/a (table missing or empty)")
+
+    lines.extend(["", "## answer_snapshot rows (ProjectionResult)", ""])
     if report.get("type_b_projection_results"):
         for item in report["type_b_projection_results"]:
             lines.append(
@@ -723,21 +936,32 @@ def write_markdown(report: dict[str, Any], path: Path) -> None:
     else:
         lines.append("- n/a")
 
-    gap = report["planned_projection_gap"]
-    lines.extend(["", "## Planned Type A Projection Gap", ""])
-    lines.append(f"- Planned: {gap['planned_count']}")
-    lines.append(f"- Materialized: {gap['materialized_count']}")
-    lines.append(f"- Missing: {gap['missing_count']}")
-    for ontology, items in gap["missing_by_ontology"].items():
+    analysis_gap = report.get("analysis_plan_gap") or report["planned_projection_gap"]
+    lines.extend(["", "## Planned analysis_plan gap", ""])
+    lines.append(f"- Planned: {analysis_gap['planned_count']}")
+    lines.append(f"- Materialized: {analysis_gap['materialized_count']}")
+    lines.append(f"- Missing: {analysis_gap['missing_count']}")
+    for ontology, items in analysis_gap["missing_by_ontology"].items():
         lines.append(f"- `{ontology}`: " + ", ".join(f"`{item['name']}`" for item in items))
 
-    type_b_gap = report["type_b_projection_result_gap"]
-    lines.extend(["", "## Planned Type B ProjectionResult Gap", ""])
-    lines.append(f"- Planned: {type_b_gap['planned_count']}")
-    lines.append(f"- Materialized: {type_b_gap['materialized_count']}")
-    lines.append(f"- Missing: {type_b_gap['missing_count']}")
-    if type_b_gap["missing_projection_ids"]:
-        lines.append("- Missing projection ids: " + ", ".join(f"`{item}`" for item in type_b_gap["missing_projection_ids"]))
+    answer_gap = report.get("answer_snapshot_gap") or report["type_b_projection_result_gap"]
+    lines.extend(["", "## Planned answer_snapshot gap", ""])
+    lines.append(f"- Planned: {answer_gap['planned_count']}")
+    lines.append(f"- Materialized: {answer_gap['materialized_count']}")
+    lines.append(f"- Missing: {answer_gap['missing_count']}")
+    if answer_gap["missing_projection_ids"]:
+        lines.append("- Missing projection ids: " + ", ".join(f"`{item}`" for item in answer_gap["missing_projection_ids"]))
+
+    live_gap = report.get("live_answer_view_gap", {})
+    if live_gap.get("planned_count"):
+        lines.extend(["", "## Planned live_answer_view gap", ""])
+        lines.append(f"- Planned: {live_gap['planned_count']}")
+        lines.append(f"- Materialized: {live_gap['materialized_count']}")
+        lines.append(f"- Missing: {live_gap['missing_count']}")
+        if live_gap.get("missing_artifact_ids"):
+            lines.append("- Missing artifact ids: " + ", ".join(f"`{item}`" for item in live_gap["missing_artifact_ids"]))
+        if live_gap.get("note"):
+            lines.append(f"- Note: {live_gap['note']}")
 
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -751,11 +975,13 @@ def main() -> None:
     parser.add_argument("--mindcli-path", default=DEFAULT_MINDCLI)
     parser.add_argument("--workspace", default=None)
     parser.add_argument("--model", default=None)
+    parser.add_argument("--answer-artifacts-seed", default=None, help="Optional answer-artifacts.seed.jsonl for live_answer_view gap audit")
     parser.add_argument("--output-dir", default="generated/projection_audits")
     args = parser.parse_args()
 
     db_path = Path(args.db)
     model_path = Path(args.model) if args.model else None
+    seed_path = Path(args.answer_artifacts_seed) if args.answer_artifacts_seed else None
     report = audit(
         db_path,
         args.workspace,
@@ -763,6 +989,7 @@ def main() -> None:
         args.db_kind,
         args.postgres_dsn or DEFAULT_POSTGRES_DSN if args.db_kind == "postgres" else args.postgres_dsn,
         args.mindcli_path,
+        seed_path,
     )
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)

@@ -15,6 +15,8 @@ Compile external tabular sources into validated GhostCrab Personal records witho
 
 Prerequisite: Phase B0 — `structured_import_cli` in `../templates/import_path_choices.yaml`.
 
+**Phase B2 (recommended):** generate deterministic fake business rows before first bulk apply — [../scripts/README_fake_business_data.md](../scripts/README_fake_business_data.md), [ROUTE_MAP § B2](ROUTE_MAP.md#route-donnees-fictives-metier). Skip only if real sources are already profiled and mapped.
+
 Runbook: `ghostcrab-personal-mcp/docs/setup/structured-import.md`  
 Operator matrix: `ghostcrab-personal-mcp/docs/reference/operator-catalog.md`
 
