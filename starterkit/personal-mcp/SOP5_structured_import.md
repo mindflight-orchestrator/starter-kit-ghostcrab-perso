@@ -39,6 +39,11 @@ Operator matrix: `ghostcrab-personal-mcp/docs/reference/operator-catalog.md`
 | 8 | `../scripts/validate_consumer_contract.mjs` | `../templates/consumer_contract.yaml` |
 | 9 | `../scripts/audit_import_pipeline.mjs` | `../templates/import_manifest.yaml` |
 
+**Companion skills** ([SKILL_ROUTE_MAP.md](SKILL_ROUTE_MAP.md)):
+
+- **Gate 7:** `ghostcrab-operator` (smoke workflow) + `ghostcrab-json-answer-builder` (structured answer from pack/projection_get).
+- **Gates 8–9:** `ghostcrab-gap-auditor` after `audit_ghostcrab_projections.py` for answerability gaps and remediation routing.
+
 ---
 
 ## Minimal sequence

@@ -6,6 +6,10 @@
 
 Fill [`../templates/import_path_choices.yaml`](../templates/import_path_choices.yaml) with `edition: personal-mcp`.
 
+**Project-local copy:** for a real workspace, keep choices beside project sources — e.g. `<project>/<workspace-slug>/import_path_choices.yaml` (`serenity-p3/import_path_choices.yaml`). Pattern and example: [SKILL_ROUTE_MAP.md §6](SKILL_ROUTE_MAP.md#6-project-local-import_path_choicesyaml).
+
+**Companion skill:** `ghostcrab-data-architect` ([SKILL_ROUTE_MAP.md](SKILL_ROUTE_MAP.md)).
+
 ---
 
 ## Defaults

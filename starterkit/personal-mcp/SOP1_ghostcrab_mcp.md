@@ -45,6 +45,8 @@ LinkML OWL path: [SOP2_obsidian_ontologie.md](SOP2_obsidian_ontologie.md) §6 bi
 
 Prepare → materialize → work → audit : [ROUTE_MAP § projections](ROUTE_MAP.md#route-projections) and [../scripts/README_projection_tools.md](../scripts/README_projection_tools.md). SOP2 §7.6–7.7 for `ghostcrab_project` ; gate 7 in [SOP5](SOP5_structured_import.md) for `ghostcrab_pack` / `ghostcrab_projection_get`.
 
+**Companion skills:** [SKILL_ROUTE_MAP.md](SKILL_ROUTE_MAP.md) — `ghostcrab-projection-reviewer` (B1 prep/freeze), `ghostcrab-gap-auditor` (audit), `ghostcrab-operator` + `ghostcrab-json-answer-builder` (runtime Q&A after import).
+
 ---
 
 ## Templates

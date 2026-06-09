@@ -9,6 +9,18 @@ They cover two different moments:
 
 The scripts are intentionally read-only. They do not write projections or artifacts to GhostCrab.
 
+## Companion skills
+
+Pair these StarterKit scripts with GhostCrab agent skills ([../personal-mcp/SKILL_ROUTE_MAP.md](../personal-mcp/SKILL_ROUTE_MAP.md)):
+
+| Script moment | Companion skill |
+|---------------|-----------------|
+| `analyze_projection_candidates.py` (pre-import, read-only) | `ghostcrab-projection-reviewer` — human validation of `projection_model_validation.md` |
+| `audit_ghostcrab_projections.py` (post-import, read-only) | `ghostcrab-gap-auditor` — remediation narrative and `adjustments[]` |
+| SOP5 gate 7 (`ghostcrab_pack`, `ghostcrab_projection_get`) | `ghostcrab-operator` + `ghostcrab-json-answer-builder` |
+
+Install skills: `gcp brain setup cursor|claude|codex|generic` from `ghostcrab-personal-mcp`.
+
 ## Answer artifact taxonomy (canonical)
 
 GhostCrab Personal routes agents by **`artifact_kind`**, not by legacy Type A/B labels. Use this vocabulary first; legacy labels appear only as compatibility footnotes.

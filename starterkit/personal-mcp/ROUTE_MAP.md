@@ -57,6 +57,21 @@ flowchart LR
 
 ---
 
+## Skills (GhostCrab agent skills)
+
+**Quelle skill invoquer à quelle phase SOP ?** → [SKILL_ROUTE_MAP.md](SKILL_ROUTE_MAP.md)
+
+Install des 10 skills (Cursor, Claude, Codex, generic) : `gcp brain setup <ide>` depuis `ghostcrab-personal-mcp`. Matrice phase × skill × opérateur, pipeline runtime Q&A, et outils projections documentés dans ce fichier.
+
+| Moment | Skill(s) typiques |
+|--------|-------------------|
+| B0 / modélisation | `ghostcrab-data-architect` |
+| Convergence / audit gaps | `ghostcrab-gap-auditor` |
+| B1 projections | `ghostcrab-projection-reviewer` |
+| Questions métier (post-import) | `ghostcrab-operator` → `ghostcrab-evidence-discovery` → `ghostcrab-json-answer-builder` |
+
+---
+
 ## Route projections
 
 Les projections sont le **contrat de retrieval** agent (questions métier → scope → schémas/facettes/arêtes requis). Elles se préparent en Phase B, se matérialisent avant ou juste après l'import, et s'auditent en clôture.

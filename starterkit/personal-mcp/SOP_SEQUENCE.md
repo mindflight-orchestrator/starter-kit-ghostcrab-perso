@@ -4,12 +4,16 @@
 
 **Route map:** [ROUTE_MAP.md](ROUTE_MAP.md)
 
+**Skill route map:** [SKILL_ROUTE_MAP.md](SKILL_ROUTE_MAP.md) — which GhostCrab skill to invoke at each SOP phase.
+
 **Do not use:** mindCLI, PostgreSQL COPY, `../pro-mcp/`, `generate_copy_migrations.mjs`.
 
 **Product references (sibling clone):**
 
 | Doc | Path |
 |-----|------|
+| Skill route map (this kit) | [SKILL_ROUTE_MAP.md](SKILL_ROUTE_MAP.md) |
+| IDE skills install | `ghostcrab-personal-mcp/ghostcrab-skills/codex/README.md` |
 | Glossary | `../ghostcrab-personal-mcp/docs/explanation/glossary.md` |
 | Operator catalog | `../ghostcrab-personal-mcp/docs/reference/operator-catalog.md` |
 | Ontology hub | `../ghostcrab-personal-mcp/docs/explanation/ontology/README.md` |
@@ -22,6 +26,7 @@
 1. Phases **in order** (A → B0 → B → **B1** → **B2** → C / C2).
 2. Load **only** files in this folder + `../templates/` + `../scripts/`.
 3. `edition: personal-mcp` in `../templates/import_manifest.yaml`.
+4. Match each phase to GhostCrab skills via [SKILL_ROUTE_MAP.md](SKILL_ROUTE_MAP.md) (`gcp brain setup cursor|claude|codex|generic` for install).
 
 ```mermaid
 flowchart LR
