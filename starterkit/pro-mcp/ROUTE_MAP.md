@@ -67,12 +67,27 @@ Les projections décrivent **quelles questions métier** l'agent doit pouvoir tr
 
 | `artifact_kind` | Stockage Pro | Lecture / audit |
 |-----------------|--------------|-----------------|
-| `analysis_plan` | `mb_pragma.projections` | mindCLI `mb_pragma projection get`, MCP `ghostcrab_pack` |
-| `live_answer_view` | registry produit (si présent) | MCP `ghostcrab_live_refresh` |
-| `answer_snapshot` | `graph.entity` (`ProjectionResult`) | MCP `ghostcrab_projection_get` |
-| `evidence_pack` | registry produit (si présent) | MCP `ghostcrab_artifact_get` |
+| `analysis_plan` | `mb_pragma.projections` | mindCLI `mb_pragma projections list`, MCP `ghostcrab_projection_decl_list` / `ghostcrab_projection_decl_get` |
+| `live_answer_view` | `mb_pragma.answer_artifacts` si présent | MCP `ghostcrab_artifact_list artifact_kind=live_answer_view`, puis `ghostcrab_live_refresh` |
+| `answer_snapshot` | `mb_pragma.answer_artifacts` ou `graph.entity` (`ProjectionResult`) | MCP `ghostcrab_answer_snapshot_list`, puis `ghostcrab_projection_get` |
+| `evidence_pack` | `mb_pragma.answer_artifacts` si présent | MCP `ghostcrab_artifact_list artifact_kind=evidence_pack`, puis `ghostcrab_artifact_get` |
 
-**Legacy:** Type A → `analysis_plan` · Type B → `answer_snapshot`
+**Legacy:** Type A → `analysis_plan` · Type B → `answer_snapshot`.
+Ne plus exposer Type A / Type B aux utilisateurs finaux ; conserver ces noms
+uniquement comme vocabulaire de compatibilité technique.
+
+### Mapping intentions métier → surfaces MCP
+
+| Intention utilisateur / agent | Surface recommandée |
+|-------------------------------|---------------------|
+| "liste les plans disponibles" | `ghostcrab_projection_decl_list` |
+| "ouvre ce plan" | `ghostcrab_projection_decl_get` |
+| "liste les live views" | `ghostcrab_artifact_list` avec `artifact_kind=live_answer_view` |
+| "rafraîchis cette vue live" | `ghostcrab_live_refresh` |
+| "liste les snapshots disponibles" | `ghostcrab_answer_snapshot_list` |
+| "ouvre ce snapshot précis" | `ghostcrab_projection_get` |
+| "liste les paquets de preuves" | `ghostcrab_artifact_list` avec `artifact_kind=evidence_pack` |
+| "ouvre ce paquet de preuves" | `ghostcrab_artifact_get` |
 
 ### Phase B1 — Préparer (avant COPY bulk)
 
@@ -109,6 +124,9 @@ go run ../mindbot/cmd/mindcli --json mb_pragma inspect --user <agent> --query "<
 ```
 
 Compléter avec MCP `ghostcrab_pack(scope=...)` pour le contexte session agent.
+Pour l'inventaire MCP direct, utiliser `ghostcrab_projection_decl_list`,
+`ghostcrab_artifact_list` et `ghostcrab_answer_snapshot_list` avant les appels
+de lecture ciblés.
 
 `../templates/consumer_contract.yaml` : `requires.projections: true` + check `ghostcrab_pack`.
 
@@ -187,7 +205,7 @@ projection_audit: mindcli
 |--------|---------|
 | Bootstrap | Docker, `make dev-bootstrap`, `npm run smoke:mcp` |
 | Modélisation | `ghostcrab_ddl_propose` → approve → `ghostcrab_ddl_execute` |
-| Requête / audit MCP | `ghostcrab_search`, `ghostcrab_coverage`, `ghostcrab_pack`, `ghostcrab_projection_get` |
+| Requête / audit MCP | `ghostcrab_search`, `ghostcrab_coverage`, `ghostcrab_pack`, `ghostcrab_projection_decl_list`, `ghostcrab_artifact_list`, `ghostcrab_answer_snapshot_list`, `ghostcrab_projection_get` |
 | **Projections — préparer** | `analyze_projection_candidates.py` |
 | **Projections — écrire** | `ghostcrab_project` ou SQL (bulk COPY) |
 | **Projections — auditer (perf.)** | mindCLI `mb_pragma` + `audit_ghostcrab_projections.py` |

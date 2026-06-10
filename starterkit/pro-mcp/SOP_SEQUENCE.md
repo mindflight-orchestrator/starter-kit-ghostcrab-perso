@@ -66,7 +66,7 @@ flowchart LR
 |------|-------------------|-----------|
 | B1 prep | [ROUTE_MAP § projections](ROUTE_MAP.md#route-projections), [../scripts/README_projection_tools.md](../scripts/README_projection_tools.md) | candidates + user validation — `artifact_kind` confirmed |
 | B1 write | SOP2 §7.6–7.7, `ghostcrab_project` or SQL post-COPY | `analysis_plan` catalogue populated |
-| B1 audit | mindCLI `mb_pragma`, `audit_ghostcrab_projections.py` | gaps `analysis_plan` / `answer_snapshot` reviewed |
+| B1 audit | mindCLI `mb_pragma`, MCP `ghostcrab_projection_decl_list` / `ghostcrab_artifact_list` / `ghostcrab_answer_snapshot_list`, `audit_ghostcrab_projections.py` | gaps `analysis_plan` / `answer_snapshot` reviewed |
 
 ---
 
@@ -108,6 +108,10 @@ export DATABASE_URL="$GHOSTCRAB_DSN"
 go run ../mindbot/cmd/mindcli --json mb_pragma projections list --workspace <ws>
 go run ../mindbot/cmd/mindcli --json mb_pragma projection get --scope <scope>
 ```
+
+MCP inventory equivalents: `ghostcrab_projection_decl_list` for
+`analysis_plan`, `ghostcrab_artifact_list` for `live_answer_view` and
+`evidence_pack`, `ghostcrab_answer_snapshot_list` for `answer_snapshot`.
 
 See `../../docs/3.modules/3.2.mindbrain-mindcli.md`.
 
