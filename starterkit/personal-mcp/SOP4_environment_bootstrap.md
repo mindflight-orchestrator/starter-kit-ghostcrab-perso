@@ -16,6 +16,7 @@ Install the user package first. The v0.5.0 install flow can detect older v0.4.4+
 npm install -g @mindflight/ghostcrab-personal-mcp@0.5.0
 gcp authorize
 gcp brain upgrade --help
+gcp brain setup cursor   # or claude | codex | generic — installs ghostcrab-shared/ + skills
 ```
 
 For a project-local database, set an explicit path. Otherwise GhostCrab Personal uses `~/.ghostcrab/databases/ghostcrab.sqlite`.
@@ -27,14 +28,15 @@ export GHOSTCRAB_SQLITE_PATH="$PWD/data/ghostcrab.sqlite"
 Source clones are for development only. Disable the install-upgrade hook when installing dependencies in the source checkout:
 
 ```bash
-git clone git@github.com:mindflight-orchestrator/ghostcrab-personal-mcp.git ~/ghostcrab-personal-mcp
-cd ~/ghostcrab-personal-mcp
+git clone git@github.com:mindflight-orchestrator/ghostcrab-personal-mcp.git
+cd ghostcrab-personal-mcp
 GHOSTCRAB_SKIP_INSTALL_UPGRADE=1 npm install
 npm run build
 node bin/gcp.mjs authorize
+gcp brain setup cursor
 ```
 
-Catalogue: `ghostcrab-personal-mcp/docs/reference/operator-catalog.md`
+Operator catalog (installed bundle): `ghostcrab-shared/CAPABILITIES.md`. Path resolution for starter-kit assets: [STARTERKIT_PATHS.md](STARTERKIT_PATHS.md). Skill routing: [SKILL_ROUTE_MAP.md](SKILL_ROUTE_MAP.md) (routine → `ghostcrab-shared/SKILL_ROUTE_MAP_ESSENTIALS.md`).
 
 ---
 
@@ -54,6 +56,7 @@ Catalogue: `ghostcrab-personal-mcp/docs/reference/operator-catalog.md`
 [ ] A3 — GHOSTCRAB_SQLITE_PATH set when project-local DB is required, otherwise default ~/.ghostcrab/databases/ghostcrab.sqlite accepted
 [ ] A4 — gcp smoke passes
 [ ] A5 — gcp brain up + MCP client shows ghostcrab_* tools
+[ ] A5b — gcp brain setup <ide> installed ghostcrab-shared/ + GhostCrab skills
 [ ] A6 — ghostcrab_status OK (no database unreachable)
 ```
 

@@ -93,7 +93,7 @@ Route agents by **`artifact_kind`** first. Legacy Type A/B = compatibilité wire
 
 **`proj_type`** (`ghostcrab_project`) : `FACT` | `GOAL` | `STEP` | `CONSTRAINT` — pas `NOTE` (pack-ranking seulement).
 
-Référence produit : `ghostcrab-personal-mcp/docs/explanation/renommage.md`
+Référence installée : `ghostcrab-shared/ARTIFACT_KINDS.md`, `ghostcrab-shared/PROJECTIONS_DISCOVERY.md` (après `gcp brain setup`). Optionnel : [renommage.md](https://github.com/mindflight-orchestrator/ghostcrab-personal-mcp/blob/main/docs/explanation/renommage.md) sur GitHub.
 
 Un catalogue `analysis_plan` sain suffit pour démarrer ; `answer_snapshot` = rapport figé avec preuves graphe.
 
@@ -163,7 +163,7 @@ Rapports : `generated/projection_audits/projection_audit_<ws>.md` — gaps `anal
 
 Puis gate 9 : `../scripts/audit_import_pipeline.mjs` + `validate_consumer_contract.mjs`.
 
-**Answer Artifacts post-import :** charger `answer-artifacts.seed.jsonl` pour `live_answer_view` / `evidence_pack` — rafraîchir les vues (`stale` → compute via `gcp brain artifact refresh`). Voir README fake-data et `renommage.md`.
+**Answer Artifacts post-import :** charger `answer-artifacts.seed.jsonl` pour `live_answer_view` / `evidence_pack` — rafraîchir les vues (`stale` → compute via `gcp brain artifact refresh`). Voir README fake-data et `ghostcrab-shared/ARTIFACT_KINDS.md`.
 
 ---
 
@@ -222,7 +222,7 @@ gcp brain structured-import reindex --workspace-id <ws> --scope all
 - **Qualité enum** — fake-data incohérentes ⇒ projections « calculables » mais métier faux.
 - **Import ≠ projections** — après apply, exécuter matérialisation B1.
 
-**Done when :** `import_manifest.json` rempli ; `ghostcrab_count` > 0 sur schémas core ; gate 7 projections smoke OK.
+**Done when :** `generated/<ws>/import_manifest.yaml` rempli ; `ghostcrab_count` > 0 sur schémas core ; gate 7 projections smoke OK.
 
 ---
 
@@ -230,9 +230,12 @@ gcp brain structured-import reindex --workspace-id <ws> --scope all
 
 ```yaml
 edition: personal-mcp
-ontology_path: linkml          # ou mcp_incremental
-tabular_path: gcp_structured_import
-document_path: gcp_document
+ontology_path:
+  choice: linkml          # ou mcp_incremental
+tabular_path:
+  choice: structured_import_cli
+document_path:
+  choice: gcp_document
 ```
 
 | Question | Route |

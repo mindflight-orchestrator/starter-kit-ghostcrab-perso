@@ -153,17 +153,17 @@ Pour un vault donné, parcourir les fichiers et classer chaque type d'objet selo
 
 | Objet Obsidian | Couche GhostCrab | `node_type` / rôle | Table cible | Notes |
 |---|---|---|---|---|
-| Note `.md` (document complet) | Référentiel stable | `document` | `mfo_facets` | `source_ref` = `note:<path-hash>` |
-| Section logique d'une note | Référentiel stable | `section` | `mfo_facets` | `source_ref` = `note:<path-hash>#<section-slug>` |
-| Page / section PDF | Référentiel stable | `document-page` | `mfo_facets` | `source_ref` = `pdf:<filename>#p<n>` |
-| Concept / entité métier | Référentiel stable | `concept` | `mfo_facets` + `graph.entity` | Nœud central du graphe |
+| Note `.md` (document complet) | Référentiel stable | `document` | `agent_facts` | `source_ref` = `note:<path-hash>` |
+| Section logique d'une note | Référentiel stable | `section` | `agent_facts` | `source_ref` = `note:<path-hash>#<section-slug>` |
+| Page / section PDF | Référentiel stable | `document-page` | `agent_facts` | `source_ref` = `pdf:<filename>#p<n>` |
+| Concept / entité métier | Référentiel stable | `concept` | `agent_facts` + `graph.entity` | Nœud central du graphe |
 | Relation sémantique | Graphe | edge | `graph.relation` | Dérivée des wikilinks ou inférée par LLM |
-| Tag Obsidian | Facette indexable | facette | `mfo_facets.facets` (clé) | Devient axe de facette |
-| Frontmatter clé-valeur | Facette indexable | facette | `mfo_facets.facets` | Mapping direct YAML → JSONB |
-| Citation / référence externe | Référentiel stable | `reference` | `mfo_facets` | URL ou identifiant externe |
-| Décision | Projection | `decision` | `mfo_projections` + Layer 1 | Trace d'audit horodatée |
-| Tâche | Layer 1 typé | `task` | Table dédiée (DDL) + `mfo_facets` | Statut, assignee, deadline |
-| Événement | Layer 1 typé | `event` | Table dédiée (DDL) + `mfo_facets` | Occurrence temporelle |
+| Tag Obsidian | Facette ingest | facette | `agent_facts.facets` (clé) | Vocabulaire path/content — voir ci-dessous |
+| Frontmatter clé-valeur | Facette ingest | facette | `agent_facts.facets` | Mapping direct YAML → JSONB |
+| Citation / référence externe | Référentiel stable | `reference` | `agent_facts` | URL ou identifiant externe |
+| Décision | Projection | `decision` | `projections` + Layer 1 | Trace d'audit horodatée |
+| Tâche | Layer 1 typé | `task` | `agent_facts` (+ schéma dédié si besoin) | Statut, assignee, deadline |
+| Événement | Layer 1 typé | `event` | `agent_facts` (+ schéma dédié si besoin) | Occurrence temporelle |
 | Wikilink `[[X]]` | Graphe | edge `REFERENCES` | `graph.relation` | Arête source→cible |
 
 ### 3.3 Coexistence de plusieurs ontologies dans un workspace
@@ -275,6 +275,15 @@ Un script de validation **doit s'exécuter entre la sortie LLM et l'injection Gh
 ---
 
 ## Section 5 — Mapping Obsidian → GhostCrab MCP
+
+> **Deux familles de facettes (ne pas mélanger).** Les exemples de cette section utilisent le **vocabulaire Obsidian brut** (`status`, `priority`, `tags`) pour le mapping vault → JSONB ingest. Ce sont des clés **provisoires / ingest**, pas la règle finale pour les enums LinkML métier.
+>
+> | Famille | Quand | Règle | Doc installée |
+> |---------|-------|-------|----------------|
+> | Ingest vault / repo | Tags, frontmatter, sections Obsidian | Clés courtes dans `agent_facts.facets` | `ghostcrab-shared/PATH_CONTENT_FACETS.md` |
+> | Enums LinkML / domaine | Après compile LinkML par module | `<module>.<slot_snake_case>` | `ghostcrab-shared/ENUM_BUSINESS_FACETS.md` |
+>
+> Voir aussi `ghostcrab-shared/SCHEMA_DESIGN.md` pour le design de schémas avant freeze.
 
 ### 5.1 Tags Obsidian → axes de facettes
 
@@ -454,9 +463,9 @@ edge labels     → note:decisions-cms-choice DEPENDS_ON ent:cms-headless
 
 ---
 
-## Section 6 bis — Voie B : LinkML (format par défaut)
+## Section 6 bis — Voie LinkML (`ontology_path.choice: linkml`, format par défaut)
 
-> **Prérequis :** Phase B0 complétée — choix `linkml` enregistré dans `../templates/import_path_choices.yaml` (voir [SOP0](SOP0_import_path_choices.md)). Ne pas utiliser cette section si l'utilisateur a choisi la voie MCP incrémentale (section 7).
+> **Prérequis :** Phase B0 complétée — choix `linkml` enregistré dans `{starterkit}/templates/import_path_choices.yaml` (voir [SOP0](SOP0_import_path_choices.md)). Ne pas utiliser cette section si l'utilisateur a choisi la voie MCP incrémentale (section 7, `mcp_incremental`).
 
 Cette voie enregistre l'ontologie comme artefact LinkML versionné, compilé et importé via le CLI MindBrain. Le LLM **génère** et **valide** le fichier ; l'import DB n'a lieu qu'après confirmation explicite.
 
@@ -465,14 +474,15 @@ Cette voie enregistre l'ontologie comme artefact LinkML versionné, compilé et 
 | Fichier | Rôle |
 |---------|------|
 | `../templates/linkml_ontology.stub.yaml` | Squelette de départ |
-| `ontology/core.yaml` | Ontologie domaine générée par le LLM |
+| `ontology/core.yaml` | Ontologie domaine mono-module (défaut) |
+| `ontology/<module>.yaml` | Ontologie multi-modules (un fichier par module LinkML) |
 | `output/ontology-slice.json` | Sortie dry-run compile (inspection) |
 
-Références canoniques (Personal) : `ghostcrab-personal-mcp/ontologies/immeuble-demo/core.yaml`, `ontologies/ghostcrab/profile.yaml`.
+Références optionnelles : [ghostcrab-personal-mcp `ontologies/immeuble-demo`](https://github.com/mindflight-orchestrator/ghostcrab-personal-mcp/tree/main/ontologies/immeuble-demo) (mono-module).
 
 ### 6 bis.2 Séquence
 
-1. Compléter `jtbd.yaml` et obtenir confirmation du Model Proposal (identique voie A).
+1. Compléter `jtbd.yaml` et obtenir confirmation du Model Proposal (identique voie MCP incrémentale).
 2. Copier `../templates/linkml_ontology.stub.yaml` vers `ontology/core.yaml`.
 3. Le LLM étend le stub : classes, enums, slots, annotations `ghostcrab.native_entity_type` / `ghostcrab.native_edge_type`.
 4. **Validation dry-run** (obligatoire, sans écriture DB) :
@@ -493,7 +503,29 @@ Références canoniques (Personal) : `ghostcrab-personal-mcp/ontologies/immeuble
      --input ontology/core.yaml \
      --import-db --force
    ```
-8. Vérification post-import : `ghostcrab_schema_list`, `ghostcrab_schema_inspect`, `ghostcrab_coverage`.
+8. Vérification post-import : `ghostcrab_ontology_list`, `ghostcrab_coverage`.
+
+**Multi-module :** répéter étapes 2–8 par module avec `ontology_id: <workspace_id>::<module>`. Ordre de compile recommandé (catalogue Serenity V4) : `production` → `administrative` → `comptabilite` → `decisionnel` → `technique` → `missions` — voir `ghostcrab-shared/ENUM_BUSINESS_FACETS.md` pour la liste complète des enum facets par module. Enregistrer la liste dans `import_path_choices.yaml` → `artefacts.ontology_modules`.
+
+### 6 bis.2a — Enum facet layer (LinkML → MCP)
+
+Après import LinkML par module, enregistrer la **couche enum métier** (automatiquement — ne pas attendre que l'utilisateur demande le préfixage).
+
+**Règle obligatoire :** `<module>.<slot_snake_case>` (ex. `administrative.formule_service`, `comptabilite.statut_exercice`).
+
+| Famille | Exemples de clés | Doc |
+|---------|------------------|-----|
+| Ingest Obsidian (tags, frontmatter) | `status`, `tags`, `priority` dans `agent_facts.facets` | Vocabulaire ingest — pas de préfixe module requis |
+| Enums LinkML / domaine | `production.statut_copropriete`, `missions.statut_mission` | Installé : `ghostcrab-shared/ENUM_BUSINESS_FACETS.md` |
+
+Workflow MCP (après confirmation utilisateur) :
+
+1. `ghostcrab_ontology_import` (ou `gcp brain ontology compile --import-db`) par module
+2. `ghostcrab_schema_register` avec `target: "facets"`, `schema_id: "<workspace_id>:<module>"`, corps avec `facet_keys` + `enum_facets`
+3. `ghostcrab_facet_register` pour chaque clé enum
+4. Valider : `ghostcrab_facet_inspect("<module>.<slot>")`, `ghostcrab_schema_list(domain="<workspace_id>", target="facets")`
+
+`ghostcrab_workspace_inspect` vide **avant structured-import** n'est pas une erreur.
 
 ### 6 bis.3 Variante avancée (non défaut)
 
@@ -509,13 +541,13 @@ gcp brain ontology import \
 
 ### 6 bis.4 Alternative historique
 
-Pour l'enregistrement progressif via MCP (`ghostcrab_schema_register`, `remember`, `upsert`, `learn`), voir **section 7 — Voie A**.
+Pour l'enregistrement progressif via MCP (`ghostcrab_schema_register`, `remember`, `upsert`, `learn`), voir **section 7 — Voie MCP incrémentale**.
 
 ---
 
-## Section 7 — Voie A : injection MCP incrémentale dans GhostCrab MCP
+## Section 7 — Voie MCP incrémentale (`ontology_path.choice: mcp_incremental`)
 
-> **Prérequis :** Phase B0 complétée — choix `mcp_incremental` enregistré dans `templates/import_path_choices.yaml`. Pour la voie LinkML par défaut, voir section 6 bis.
+> **Prérequis :** Phase B0 complétée — choix `mcp_incremental` enregistré dans `{starterkit}/templates/import_path_choices.yaml`. Pour la voie LinkML par défaut, voir section 6 bis.
 
 ### 7.1 Vue d'ensemble
 
@@ -549,8 +581,10 @@ Pour l'enregistrement progressif via MCP (`ghostcrab_schema_register`, `remember
 
 Un appel par ontologie candidate. L'ordre suit la dépendance (les pivots en premier).
 
+> **Facet keys dans cette voie :** les clés ci-dessous sont **ingest / entité** (Obsidian frontmatter, pas enums LinkML). Pour les enums métier après LinkML, utiliser la voie 6 bis.2a et `<module>.<slot_snake_case>` (`ghostcrab-shared/ENUM_BUSINESS_FACETS.md`). Pour l'ingest documentaire, voir `ghostcrab-shared/PATH_CONTENT_FACETS.md`.
+
 ```json
-// ghostcrab_schema_register — exemple décision
+// ghostcrab_schema_register — exemple décision (ingest / entité, pas enum LinkML)
 {
   "workspace_id": "web-project-acme",
   "schema_id": "web-project-acme:decision",
@@ -559,6 +593,22 @@ Un appel par ontologie candidate. L'ordre suit la dépendance (les pivots en pre
   "facet_keys": ["title", "date", "status", "tags", "client", "phase"],
   "required_facets": ["title", "date", "status"],
   "projection_types_allowed": ["AUDIT_DECISION", "REVIEW_CLIENT_APPROVAL"]
+}
+```
+
+Exemple **enum facet LinkML** (voie 6 bis.2a, pas cette étape MCP incrémentale) :
+
+```json
+// ghostcrab_schema_register — target: "facets", schema_id: "<workspace_id>:<module>"
+{
+  "workspace_id": "web-project-acme",
+  "schema_id": "web-project-acme:administrative",
+  "target": "facets",
+  "facet_keys": ["administrative.formule_service", "administrative.statut_contrat"],
+  "enum_facets": {
+    "administrative.formule_service": ["FDRO", "FDRS", "FDROP"],
+    "administrative.statut_contrat": ["actif", "resilie", "en_cours"]
+  }
 }
 ```
 
@@ -678,7 +728,7 @@ Exécuter dans l'ordre :
 | Frontmatter modifié | Re-parser la note, appeler `ghostcrab_upsert` avec le même `source_ref` |
 | Titre modifié | `source_ref` inchangé (dérivé du path, pas du titre) → pas d'impact |
 | Note déplacée | `source_ref` change (path nouveau) → **V1 :** pas d'outil `ghostcrab_delete`. Migrer avec `ghostcrab_upsert` sur l'ancien `source_ref` en marquant `facets.status: "deleted"` (tombstone), puis `ghostcrab_remember` / `ghostcrab_upsert` sur le nouveau `source_ref` ; nettoyer le graphe (`graph.relation`) si besoin via re-sync ou SQL ciblé. |
-| Note supprimée | **V1 :** même approche — `ghostcrab_upsert` avec tombstone `status: "deleted"` sur le `source_ref` ; suppression définitive des lignes (hard delete) uniquement via SQL manuel sur `mfo_facets` / graphe si la politique du workspace l'exige. |
+| Note supprimée | **V1 :** même approche — `ghostcrab_upsert` avec tombstone `status: "deleted"` sur le `source_ref` ; suppression définitive des lignes (hard delete) uniquement via SQL manuel sur `agent_facts` / graphe si la politique du workspace l'exige. |
 | Contenu réécrit | Re-extraire avec LLM, `ghostcrab_upsert`, re-générer les edges (diff d'edges si nécessaire) |
 
 **Pattern recommandé :** Mantenir un fichier `sync_state.json` avec `{source_ref: last_modified_timestamp}` pour détecter les changements sans re-parser tout le vault.
@@ -818,7 +868,7 @@ Given une note déjà injectée avec source_ref "note:decisions-cms-choice"
 When le frontmatter est modifié (status: validée → status: archivée)
   And ghostcrab_upsert est rappelé avec le même source_ref
 Then la facette status est mise à jour à "archivée"
-  And aucun doublon n'est créé dans mfo_facets
+  And aucun doublon n'est créé dans agent_facts
   And les edges existants sont préservés
 ```
 

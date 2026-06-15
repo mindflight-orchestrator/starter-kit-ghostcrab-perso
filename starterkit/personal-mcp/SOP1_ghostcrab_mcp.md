@@ -14,10 +14,11 @@
 | Topic | Personal |
 |-------|----------|
 | Database | SQLite: `agent_facts`, `graph_entity`, `projections`, `ontology_*` |
-| MCP tools | ~50 registered, 12 listed by default — see product `docs/reference/operator-catalog.md` |
+| MCP tools | ~50 registered, 12 listed by default — installed `ghostcrab-shared/CAPABILITIES.md` (after `gcp brain setup <ide>`) |
+| Schema design | `ghostcrab-shared/SCHEMA_DESIGN.md` — business enums vs ingest facets |
 | Bulk tabular | `gcp brain structured-import` → [SOP5](SOP5_structured_import.md) |
 | Bulk documents | `gcp brain document` → [SOP6](SOP6_gcp_document_import.md) |
-| Formal ontology | `gcp brain ontology compile` — product `docs/explanation/ontology/README.md` |
+| Formal ontology | `gcp brain ontology compile` — see [SOP2](SOP2_obsidian_ontologie.md) §6 bis |
 | DDL Layer 1 Postgres | **Skip** — use `ghostcrab_schema_register` + SQLite tables |
 | mindCLI | **Forbidden** |
 

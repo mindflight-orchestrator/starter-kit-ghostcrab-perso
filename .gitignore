@@ -51,4 +51,4 @@ Thumbs.db
 .vscode/
 *.log
 .cursor/
-;codex/
+.codex/

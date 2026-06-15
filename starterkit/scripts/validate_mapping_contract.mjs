@@ -23,16 +23,41 @@ const mappingText = readText(args.mapping);
 const errors = [];
 const warnings = [];
 
-for (const required of [
-  'workspace_id',
-  'source_contract',
-  'record_id_rules',
-  'field_to_facet',
-  'relation_extraction',
-  'pending_review_rules',
-]) {
-  if (!mappingText.includes(`${required}:`)) {
-    errors.push({ code: 'missing_mapping_section', section: required });
+function isLegacyStyleMapping(text) {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  try {
+    const parsed = JSON.parse(trimmed);
+    return (
+      parsed &&
+      typeof parsed === "object" &&
+      (parsed.entities != null || parsed.contract_relations != null || parsed.import_ready != null)
+    );
+  } catch {
+    return false;
+  }
+}
+
+const isLegacy = isLegacyStyleMapping(mappingText);
+
+if (isLegacy) {
+  warnings.push({
+    code: 'legacy_mapping_detected',
+    message:
+      'Detected legacy starter-kit mapping format (entities/edges style). Compatibility mode enabled for gcp structured-import kit.',
+  });
+} else {
+  for (const required of [
+    'workspace_id',
+    'source_contract',
+    'record_id_rules',
+    'field_to_facet',
+    'relation_extraction',
+    'pending_review_rules',
+  ]) {
+    if (!mappingText.includes(`${required}:`) && !mappingText.includes(`"${required}"`)) {
+      errors.push({ code: 'missing_mapping_section', section: required });
+    }
   }
 }
 

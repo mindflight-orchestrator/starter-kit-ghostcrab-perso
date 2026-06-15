@@ -1,6 +1,10 @@
-# linkml_ontology.stub.yaml — Minimal LinkML skeleton for SOP2 Voie B (SOP0 default).
-# Copy to ontology/core.yaml and extend from JTBD + Model Proposal.
-# Canonical reference: ghostcrab-personal-mcp/ontologies/immeuble-demo/core.yaml
+# linkml_ontology.stub.yaml — Minimal LinkML skeleton for SOP2 Voie LinkML (SOP0 default: ontology_path.choice: linkml).
+# Copy to {project}/ontology/core.yaml (single module) OR {project}/ontology/<module>.yaml (multi-module).
+# After compile/import per module:
+#   1. ghostcrab_ontology_import or gcp brain ontology compile --import-db
+#   2. Register enum facets as <module>.<slot_snake_case> per ghostcrab-shared/ENUM_BUSINESS_FACETS.md
+#      ExampleStatus below is illustrative YAML only — MCP registration uses e.g. core.example_status
+# Optional reference: ghostcrab-personal-mcp/ontologies/immeuble-demo/core.yaml
 
 id: https://example.org/ontology/<workspace-id>/core
 name: <workspace_id>_core

@@ -8,16 +8,18 @@
 
 **Do not use:** mindCLI, PostgreSQL COPY, `../pro-mcp/`, `generate_copy_migrations.mjs`.
 
-**Product references (sibling clone):**
+**Path resolution:** [STARTERKIT_PATHS.md](STARTERKIT_PATHS.md)
 
-| Doc | Path |
-|-----|------|
+**Product references:**
+
+| Doc | Source |
+|-----|--------|
 | Skill route map (this kit) | [SKILL_ROUTE_MAP.md](SKILL_ROUTE_MAP.md) |
-| IDE skills install | `ghostcrab-personal-mcp/ghostcrab-skills/codex/README.md` |
-| Glossary | `../ghostcrab-personal-mcp/docs/explanation/glossary.md` |
-| Operator catalog | `../ghostcrab-personal-mcp/docs/reference/operator-catalog.md` |
-| Ontology hub | `../ghostcrab-personal-mcp/docs/explanation/ontology/README.md` |
-| MECE lab | `../ghostcrab-personal-mcp/examples/ghostcrab-docs/import_path_choices.yaml` |
+| IDE skills install | `gcp brain setup cursor\|claude\|codex\|generic` → `ghostcrab-shared/` |
+| Phase × skill (condensed) | `ghostcrab-shared/SKILL_ROUTE_MAP_ESSENTIALS.md` |
+| Enum facet naming | `ghostcrab-shared/ENUM_BUSINESS_FACETS.md` |
+| Operator surface | `ghostcrab-shared/CAPABILITIES.md` |
+| Optional deep docs | [ghostcrab-personal-mcp on GitHub](https://github.com/mindflight-orchestrator/ghostcrab-personal-mcp) |
 
 ---
 

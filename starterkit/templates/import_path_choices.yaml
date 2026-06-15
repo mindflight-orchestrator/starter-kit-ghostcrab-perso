@@ -1,9 +1,16 @@
 # import_path_choices.yaml — Record explicit import path decisions (SOP0).
 # Fill before Phase B ontology work and before Phase C2 tabular import.
+# Copy to {project}/<workspace-slug>/import_path_choices.yaml for delivery projects.
 
+edition: "personal-mcp"
 workspace_id: "<kebab-case-slug>"
 recorded_at: "<ISO-8601>"
 recorded_by: "<agent-or-operator>"
+
+paths:
+  # Optional: absolute or relative path to starter-kit clone root (parent of starterkit/).
+  # Else: GHOSTCRAB_STARTERKIT_ROOT env or .ghostcrab/starterkit-root in {project}
+  starterkit_root: null
 
 ontology_path:
   # linkml (default recommended) | mcp_incremental
@@ -17,6 +24,12 @@ tabular_path:
   confirmed_at: null
   notes: ""
 
+document_path:
+  # gcp_document (default) | skip
+  choice: "gcp_document"
+  confirmed_at: null
+  notes: ""
+
 # Phase B2 — fake business data (before first bulk import if no real source yet)
 fake_data:
   # generate | skip (real sources already validated)
@@ -24,10 +37,14 @@ fake_data:
   confirmed_at: null
   notes: ""
   output_dir: "generated/<workspace_id>/import_ready"
-  script_readme: "../scripts/README_fake_business_data.md"
+  script_readme: "{starterkit}/scripts/README_fake_business_data.md"
 
-# Optional: paths to generated artefacts per choice
+# Generated artefacts per choice
 artefacts:
   linkml_ontology: "ontology/core.yaml"
+  ontology_modules: []
+  # Multi-module example: ["production", "administrative", "comptabilite", "decisionnel", "technique", "missions"]
   ontology_compile_slice: "output/ontology-slice.json"
+  # Template source: {starterkit}/templates/import_manifest.yaml
+  # Runtime copy (gate 9): {project}/generated/<workspace_id>/import_manifest.yaml
   import_manifest: "templates/import_manifest.yaml"

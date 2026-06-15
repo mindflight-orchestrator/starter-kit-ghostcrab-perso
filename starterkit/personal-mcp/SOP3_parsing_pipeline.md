@@ -92,7 +92,7 @@ Détails : [SOP6_gcp_document_import.md](SOP6_gcp_document_import.md).
 ## Done when
 
 - JSONB validator sans erreur bloquante sur l'échantillon représentatif
-- Voie A ou B choisie et enregistrée dans `../templates/import_path_choices.yaml`
+- `ontology_path.choice` (`linkml` ou `mcp_incremental`) enregistré dans `{starterkit}/templates/import_path_choices.yaml`
 - Post-import : `ghostcrab_coverage` ≥ 80 % ou plan SOP6/SOP5 lancé
 
 ---

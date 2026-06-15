@@ -4,11 +4,11 @@
 
 **Phases:** B0 (ontology) · C2.0 (tabular)
 
-Fill [`../templates/import_path_choices.yaml`](../templates/import_path_choices.yaml) with `edition: personal-mcp`.
+Fill [`../templates/import_path_choices.yaml`](../templates/import_path_choices.yaml) with `edition: personal-mcp` and copy to `{project}/<workspace-slug>/import_path_choices.yaml`.
 
-**Project-local copy:** for a real workspace, keep choices beside project sources — e.g. `<project>/<workspace-slug>/import_path_choices.yaml` (`serenity-p3/import_path_choices.yaml`). Pattern and example: [SKILL_ROUTE_MAP.md §6](SKILL_ROUTE_MAP.md#6-project-local-import_path_choicesyaml).
+**Path resolution:** [STARTERKIT_PATHS.md](STARTERKIT_PATHS.md)
 
-**Companion skill:** `ghostcrab-data-architect` ([SKILL_ROUTE_MAP.md](SKILL_ROUTE_MAP.md)).
+**Companion skill:** `ghostcrab-data-architect` ([SKILL_ROUTE_MAP.md](SKILL_ROUTE_MAP.md)) — install via `gcp brain setup <ide>`.
 
 ---
 
@@ -16,10 +16,14 @@ Fill [`../templates/import_path_choices.yaml`](../templates/import_path_choices.
 
 ```yaml
 edition: personal-mcp
-ontology_path: linkml
-ontology_path_alt: mcp_incremental
-tabular_path: gcp_structured_import
-document_path: gcp_document
+ontology_path:
+  choice: linkml
+tabular_path:
+  choice: structured_import_cli
+document_path:
+  choice: gcp_document
+paths:
+  starterkit_root: null
 ```
 
 **Forbidden:** `sop3_copy`, `sop5_voie_a_copy`, `mindcli_audit`, `generate_copy_migrations.mjs`.
@@ -32,7 +36,8 @@ document_path: gcp_document
 Pour enregistrer l'ontologie de ce workspace, deux voies sont disponibles :
 
 1. Voie LinkML (recommandée)
-   — ontology/core.yaml + gcp brain ontology compile (dry-run puis --import-db)
+   — ontology/core.yaml (module unique) ou ontology/<module>.yaml (multi-modules)
+   — gcp brain ontology compile (dry-run puis --import-db)
    — Voir [SOP2_obsidian_ontologie.md](SOP2_obsidian_ontologie.md) section 6 bis
 
 2. Voie MCP incrémentale
@@ -47,7 +52,9 @@ Quelle voie ? (1 ou 2)
 | `linkml` | SOP2 §6 bis + `../templates/linkml_ontology.stub.yaml` |
 | `mcp_incremental` | SOP2 §7 |
 
-Références : `ghostcrab-personal-mcp/ontologies/immeuble-demo/core.yaml`, `examples/ghostcrab-docs/import_path_choices.yaml`, `docs/explanation/ontology/README.md`.
+**Multi-module:** list modules in `artefacts.ontology_modules`. After LinkML import, register enum facets as `<module>.<slot_snake_case>` — see installed `ghostcrab-shared/ENUM_BUSINESS_FACETS.md`.
+
+Optional single-module reference: [ghostcrab-personal-mcp `ontologies/immeuble-demo`](https://github.com/mindflight-orchestrator/ghostcrab-personal-mcp/tree/main/ontologies/immeuble-demo).
 
 ---
 
@@ -64,7 +71,7 @@ Avant le premier import bulk tabulaire (SOP5), souhaitez-vous :
 Choix ? (1 ou 2)
 ```
 
-Enregistrer dans `../templates/import_path_choices.yaml` → `fake_data.choice`: `generate` | `skip`.
+Enregistrer dans `import_path_choices.yaml` → `fake_data.choice`: `generate` | `skip`.
 
 ---
 
@@ -86,7 +93,7 @@ Quelle voie ? (1 ou 2)
 
 ## LinkML loop
 
-See [SOP_SEQUENCE.md](SOP_SEQUENCE.md) Phase B ontology + product `docs/setup/structured-import.md`.
+See [SOP_SEQUENCE.md](SOP_SEQUENCE.md) Phase B ontology + [SOP5_structured_import.md](SOP5_structured_import.md) for tabular closure gates (`ghostcrab-shared/IMPORT_CLOSURE_GATES.md`).
 
 ---
 

@@ -1,5 +1,6 @@
 # import_manifest.yaml — Final audit record for one source import run (SOP5).
 
+edition: "personal-mcp"
 workspace_id: "<kebab-case-slug>"
 run_id: "<YYYYMMDD-HHMMSS-source-slug>"
 status: "draft" # draft | dry_run_passed | imported | consumer_validated | failed
@@ -7,13 +8,16 @@ status: "draft" # draft | dry_run_passed | imported | consumer_validated | faile
 import_path_choices:
   ontology_path: "<linkml|mcp_incremental>"
   tabular_path: "<structured_import_cli|sop5_compiler>"
-  choices_file: "templates/import_path_choices.yaml"
+  # Project-local choices file (not starter-kit template path)
+  choices_file: "<workspace-slug>/import_path_choices.yaml"
   confirmed_at: "<ISO-8601>"
 
 runtime:
   ghostcrab_runtime: "<perso-or-pro-product-runtime>"
   backend: "<postgresql-or-sqlite-or-other>"
   database_identity: "<dsn-or-sqlite-path-or-redacted>"
+  # Optional: clone root (parent of starterkit/) — else GCP_STARTERKIT_ROOT env or paths.starterkit_root in choices YAML
+  starterkit_root: null
   verified_at: "<ISO-8601>"
 
 inputs:
@@ -41,8 +45,8 @@ counts:
   graph_edges: null
 
 commands:
-  # Voie A (sop5_compiler): starterkit/scripts/* steps
-  # Voie B (structured_import_cli): gcp brain structured-import validate|register-semantics|apply|reindex
+  # sop5_compiler: starterkit/scripts/* dry-run steps
+  # structured_import_cli: gcp brain structured-import validate|register-semantics|apply|reindex
   - step: "<step-name>"
     path: "<sop5_compiler|structured_import_cli>"
     command: "<command-or-mcp-call-summary>"

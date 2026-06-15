@@ -6,10 +6,14 @@
 
 ## Default path (personal-mcp)
 
-1. [personal-mcp/ROUTE_MAP.md](personal-mcp/ROUTE_MAP.md) — full route SOP 0→6
-2. [personal-mcp/SOP_SEQUENCE.md](personal-mcp/SOP_SEQUENCE.md) — canonical checklist
+1. [personal-mcp/STARTERKIT_PATHS.md](personal-mcp/STARTERKIT_PATHS.md) — resolve `{starterkit}` and `{project}`
+2. [personal-mcp/ROUTE_MAP.md](personal-mcp/ROUTE_MAP.md) — full route SOP 0→6
+3. [personal-mcp/SOP_SEQUENCE.md](personal-mcp/SOP_SEQUENCE.md) — canonical checklist
+4. [personal-mcp/SKILL_ROUTE_MAP.md](personal-mcp/SKILL_ROUTE_MAP.md) — which GhostCrab skill per phase
 
 Root `SOP*.md` stubs point here by default.
+
+**Skills (product):** `npm install -g @mindflight/ghostcrab-personal-mcp@0.5.0` then `gcp brain setup cursor|claude|codex|generic`.
 
 ---
 
@@ -27,12 +31,12 @@ Never mix `gcp` bulk operators with Pro COPY/mindCLI on the same database.
 ## Clone
 
 ```bash
-git clone git@github.com:mindflight-orchestrator/starter-kit-ghostcrab-perso.git ~/mindbrain-starterkit
+git clone git@github.com:mindflight-orchestrator/starter-kit-ghostcrab-perso.git
 ```
 
-| Edition | Product repo |
-|---------|----------------|
-| personal-mcp (default) | `ghostcrab-personal-mcp` |
+| Edition | Product package |
+|---------|-----------------|
+| personal-mcp (default) | `@mindflight/ghostcrab-personal-mcp` |
 | pro-mcp | `ghostcrab-mcp` |
 
 ---
@@ -55,6 +59,7 @@ starterkit/
 
 - `ghostcrab_*` tools visible in session; call `ghostcrab_status` before modeling.
 - LinkML (`gcp brain ontology compile`) ≠ `ghostcrab_schema_register` (`ghostcrab:*`) on Personal.
+- Business enum facets: `<module>.<slot_snake_case>` — see installed `ghostcrab-shared/ENUM_BUSINESS_FACETS.md`.
 
 ---
 

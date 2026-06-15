@@ -5,9 +5,19 @@
 ## Default: personal-mcp
 
 1. Read `../EDITIONS.md`.
-2. **Default:** `../personal-mcp/ROUTE_MAP.md` + `../personal-mcp/SOP_SEQUENCE.md`
-3. **Pro:** `../pro-mcp/ROUTE_MAP.md` + `../pro-mcp/SOP_SEQUENCE.md`
-4. Load SOP0–SOP6 from the active folder only (not root stubs).
+2. Resolve paths: `../personal-mcp/STARTERKIT_PATHS.md`
+3. **Default:** `../personal-mcp/ROUTE_MAP.md` + `../personal-mcp/SOP_SEQUENCE.md` + `../personal-mcp/SKILL_ROUTE_MAP.md` (full matrix)
+4. **Pro:** `../pro-mcp/ROUTE_MAP.md` + `../pro-mcp/SOP_SEQUENCE.md`
+5. Load SOP0–SOP6 from the active folder only (not root stubs).
+
+## GhostCrab skills
+
+```bash
+gcp brain setup claude
+```
+
+- **Routine routing:** `~/.claude/skills/ghostcrab-shared/SKILL_ROUTE_MAP_ESSENTIALS.md`
+- **Contracts:** `~/.claude/skills/ghostcrab-shared/` — `ENUM_BUSINESS_FACETS.md`, `PATH_CONTENT_FACETS.md`, `SCHEMA_DESIGN.md`
 
 ## Key rules
 

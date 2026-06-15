@@ -12,7 +12,9 @@
 
 Ingest unstructured documents after Phase B ontology (LinkML) or MCP schemas exist. This SOP is the StarterKit companion to the product runbook:
 
-→ [`ghostcrab-personal-mcp` document-import.md](https://gitlab.com/webigniter/ghostcrab-personal-mcp/-/blob/main/docs/setup/document-import.md)
+→ [ghostcrab-personal-mcp document-import.md](https://github.com/mindflight-orchestrator/ghostcrab-personal-mcp/blob/main/docs/setup/document-import.md)
+
+**Skill routing:** [SKILL_ROUTE_MAP.md](SKILL_ROUTE_MAP.md). Document-ingest facet keys (path/content axes): `ghostcrab-shared/PATH_CONTENT_FACETS.md` — distinct from LinkML business enums (`ENUM_BUSINESS_FACETS.md`).
 
 ---
 
@@ -48,7 +50,7 @@ gcp brain document document-qualify \
   --taxonomies my_ws::core --facets topic.category
 ```
 
-Full catalogue: product [`operator-catalog.md`](https://gitlab.com/webigniter/ghostcrab-personal-mcp/-/blob/main/docs/reference/operator-catalog.md).
+Full catalogue: installed `ghostcrab-shared/CAPABILITIES.md` (after `gcp brain setup <ide>`). Optional human reference: [operator-catalog.md](https://github.com/mindflight-orchestrator/ghostcrab-personal-mcp/blob/main/docs/reference/operator-catalog.md).
 
 ---
 

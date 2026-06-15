@@ -17,8 +17,9 @@ Prerequisite: Phase B0 — `structured_import_cli` in `../templates/import_path_
 
 **Phase B2 (recommended):** generate deterministic fake business rows before first bulk apply — [../scripts/README_fake_business_data.md](../scripts/README_fake_business_data.md), [ROUTE_MAP § B2](ROUTE_MAP.md#route-donnees-fictives-metier). Skip only if real sources are already profiled and mapped.
 
-Runbook: `ghostcrab-personal-mcp/docs/setup/structured-import.md`  
-Operator matrix: `ghostcrab-personal-mcp/docs/reference/operator-catalog.md`
+**Path resolution:** [STARTERKIT_PATHS.md](STARTERKIT_PATHS.md) — agents: `GHOSTCRAB_STARTERKIT_ROOT` or `.ghostcrab/starterkit-root`; CLI: `GCP_STARTERKIT_ROOT`, `--starterkit-root`, or `paths.starterkit_root` in `import_path_choices.yaml`.
+
+Closure gates: installed `ghostcrab-shared/IMPORT_CLOSURE_GATES.md`. Tabular CLI details: [ghostcrab-personal-mcp structured-import](https://github.com/mindflight-orchestrator/ghostcrab-personal-mcp/blob/main/docs/setup/structured-import.md).
 
 **Stop MCP** before database-backed `gcp` commands (or `--force`).
 
@@ -54,6 +55,8 @@ gcp brain structured-import register-semantics --workspace-id <ws> --model ... -
 gcp brain structured-import apply --workspace-id <ws> --mapping ... --facets ... --edges ...
 gcp brain structured-import reindex --workspace-id <ws> --scope all
 ```
+
+When templates live in the starter-kit clone, pass `--starterkit-root` (or set `GCP_STARTERKIT_ROOT` / `paths.starterkit_root` in choices YAML). Agents resolve the same clone via `GHOSTCRAB_STARTERKIT_ROOT` or `.ghostcrab/starterkit-root` — see [STARTERKIT_PATHS.md](STARTERKIT_PATHS.md).
 
 StarterKit `.mjs` scripts: profiling, mapping, dry-run JSONL only — **not** `generate_copy_migrations.mjs`.
 

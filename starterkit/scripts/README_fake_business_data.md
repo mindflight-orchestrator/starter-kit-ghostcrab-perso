@@ -16,6 +16,8 @@ Génère des **données fictives métier** alignées sur le contrat de modèle (
 
 Phase **B2** : après contrat ontologique (B) et catalogue projections (B1), **avant** `gcp brain structured-import` ou COPY (C2).
 
+**Facettes enum :** pour les domaines multi-modules, les valeurs générées et les clés de facettes dans `facets` JSON / CSV doivent respecter `<module>.<slot_snake_case>` — voir `ghostcrab-shared/ENUM_BUSINESS_FACETS.md` après `gcp brain setup`. Les clés ingest Obsidian courtes (`status`, `tags`) ne remplacent pas cette règle pour les enums LinkML.
+
 ---
 
 ## Entrées requises
@@ -44,7 +46,7 @@ generated/<workspace_id>/
 ├── contracts/
 │   ├── projection_catalog.yaml      # optional — lié B1
 │   └── mapping_external_to_canonical.json
-└── import_manifest.json             # counts, paths, edition
+└── import_manifest.yaml             # counts, paths, edition (runtime: generated/<ws>/import_manifest.yaml)
 ```
 
 **Personal :** alimenter `gcp brain structured-import` (SOP5).  
@@ -55,7 +57,7 @@ generated/<workspace_id>/
 ## Règles de qualité métier
 
 1. **`schema_id` namespacé** — `<workspace_id>:<family>:<type>` (SOP2 §6).
-2. **Enums du modèle** — pas de valeurs hors liste (ex. `FDRO`/`FDRS`/`FDROP`, pas `annuel` générique).
+2. **Enums du modèle** — pas de valeurs hors liste ; clés enum LinkML en `<module>.<slot_snake_case>` (ex. `administrative.formule_service`, pas `formule_service` seul).
 3. **Ordre de génération** — entités pivots avant dépendantes (Serenity : copropriétés avant équipes).
 4. **Graphe cohérent** — arêtes uniquement entre `source_ref` existants ; labels dans la liste fermée SOP2.
 5. **Volume minimal projections** — assez de lignes pour tester les scopes B1 retenus (ex. ≥3 lignes par projection « core »).
@@ -124,7 +126,7 @@ Voir [README_projection_tools.md](README_projection_tools.md).
 ## Checklist B2 « done »
 
 - [ ] `model_contract.json` cohérent avec templates  
-- [ ] CSV `import_ready/` parseables ; counts documentés dans `import_manifest.json`  
+- [ ] CSV `import_ready/` parseables ; counts documentés dans `import_manifest.yaml`  
 - [ ] Enums et edges validés (dry-run gates 2–4 sans erreur bloquante)  
 - [ ] Au moins une projection B1 « core » a assez de lignes source pour un smoke test post-import  
 - [ ] `GHOSTCRAB_SQLITE_PATH` / DSN Pro = **même base** que le MCP actif (éviter le piège multi-SQLite Serenity)

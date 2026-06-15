@@ -45,7 +45,7 @@ GhostCrab Personal routes agents by **`artifact_kind`**, not by legacy Type A/B 
 
 **`proj_type`** (semantic type inside `analysis_plan` rows, written by `ghostcrab_project`): `FACT` | `GOAL` | `STEP` | `CONSTRAINT`. The `projection_types` table also seeds `NOTE` for pack ranking, but **`ghostcrab_project` does not accept `NOTE`**.
 
-Product reference: `ghostcrab-personal-mcp/docs/explanation/renommage.md`, `vendor/mindbrain/docs/artifacts/artifact-model.md`.
+Product reference (installed first): `ghostcrab-shared/ARTIFACT_KINDS.md`, `ghostcrab-shared/PROJECTIONS_DISCOVERY.md`. Optional deep dive: [renommage.md](https://github.com/mindflight-orchestrator/ghostcrab-personal-mcp/blob/main/docs/explanation/renommage.md), `vendor/mindbrain/docs/artifacts/artifact-model.md`.
 
 ---
 

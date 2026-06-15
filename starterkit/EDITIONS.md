@@ -30,14 +30,23 @@ Each folder contains **all SOP0–SOP6** adapted to its runtime. Do not load the
 
 ---
 
-## Product docs (Personal — sibling clone)
+## Product reference (Personal)
 
-| Doc | Path (from `mindflight/` parent) |
-|-----|----------------------------------|
-| Glossary | `ghostcrab-personal-mcp/docs/explanation/glossary.md` |
-| Operator catalog | `ghostcrab-personal-mcp/docs/reference/operator-catalog.md` |
-| Ontology LinkML/OWL2 | `ghostcrab-personal-mcp/docs/explanation/ontology/README.md` |
-| MECE lab example | `ghostcrab-personal-mcp/examples/ghostcrab-docs/import_path_choices.yaml` |
+Install GhostCrab skills first: `gcp brain setup <ide>` → shared contracts in `ghostcrab-shared/`.
+
+| Topic | Primary source |
+| ----- | -------------- |
+| Onboarding / gates | `ghostcrab-shared/ONBOARDING_CONTRACT.md` |
+| Schema design | `ghostcrab-shared/SCHEMA_DESIGN.md` |
+| Enum facet naming | `ghostcrab-shared/ENUM_BUSINESS_FACETS.md` |
+| Path/content ingest facets | `ghostcrab-shared/PATH_CONTENT_FACETS.md` |
+| Artifact kinds | `ghostcrab-shared/ARTIFACT_KINDS.md` |
+| Projection discovery | `ghostcrab-shared/PROJECTIONS_DISCOVERY.md` |
+| Operator surface | `ghostcrab-shared/CAPABILITIES.md` |
+| Phase × skill (short) | `ghostcrab-shared/SKILL_ROUTE_MAP_ESSENTIALS.md` |
+| Path resolution (full) | `ghostcrab-shared/STARTERKIT_PATHS.md` or [personal-mcp/STARTERKIT_PATHS.md](personal-mcp/STARTERKIT_PATHS.md) |
+
+Optional deep docs (GitHub): [ghostcrab-personal-mcp](https://github.com/mindflight-orchestrator/ghostcrab-personal-mcp) — glossary, operator catalog, ontology hub, MECE lab example.
 
 ---
 

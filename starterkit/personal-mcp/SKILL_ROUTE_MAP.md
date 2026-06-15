@@ -1,5 +1,8 @@
 # Skill route map — personal-mcp (SOP 0→6)
 
+> **Routine sessions:** load `ghostcrab-shared/SKILL_ROUTE_MAP_ESSENTIALS.md` (condensed phase × skill matrix).  
+> **Full delivery detail:** this file + [SOP_SEQUENCE.md](SOP_SEQUENCE.md).
+
 **Edition:** GhostCrab Personal — SQLite, `gcp brain …`, MCP `ghostcrab_*`.
 
 **Canon sequence:** [SOP_SEQUENCE.md](SOP_SEQUENCE.md) · **Route map:** [ROUTE_MAP.md](ROUTE_MAP.md)
@@ -21,7 +24,9 @@ gcp brain setup generic   # ~/.agents/skills/<skill>/
 
 Opt-out: `--no-skills`. Project-local install: `--skills-scope project`.
 
-Shared contracts install alongside skills (e.g. `ONBOARDING_CONTRACT.md`). MCP wiring per IDE: `ghostcrab-personal-mcp/ghostcrab-skills/codex/README.md` (Cursor: product `README_CURSOR_MCP.md`; Claude: `gcp-client-setup.md`).
+**Managed skill directories and `ghostcrab-shared/` are always replaced** on install — no `--force` required for skills.
+
+Shared contracts install alongside skills under `ghostcrab-shared/` (e.g. `ONBOARDING_CONTRACT.md`, `ENUM_BUSINESS_FACETS.md`, `SKILL_ROUTE_MAP_ESSENTIALS.md`). MCP server wiring: `gcp brain setup <ide>` registers stdio MCP + permissions.
 
 ### The 10 skills
 
@@ -51,7 +56,7 @@ Shared contracts install alongside skills (e.g. `ONBOARDING_CONTRACT.md`). MCP w
 |-----------|------------------|----------------------|----------------|
 | **A** Bootstrap | — | `gcp smoke`, `gcp brain up`, `ghostcrab_status` | `ghostcrab-gap-auditor` (no data to audit) |
 | **B0** Import choices | `ghostcrab-data-architect` | [../templates/import_path_choices.yaml](../templates/import_path_choices.yaml) | `ghostcrab-json-answer-builder` |
-| **B** Modeling | `ghostcrab-data-architect` | `ghostcrab_schema_register`, `gcp brain ontology compile` | `ghostcrab-projection-reviewer` |
+| **B** Modeling | `ghostcrab-data-architect` | `ghostcrab_ontology_import`, `ghostcrab_schema_register` (`target=facets`), `gcp brain ontology compile` — enum facets `<module>.<slot>` per `ghostcrab-shared/ENUM_BUSINESS_FACETS.md` | `ghostcrab-projection-reviewer` |
 | **B-fix** Convergence | `ghostcrab-gap-auditor` | `ghostcrab_graph_diagnostics`, project remediation scripts | `ghostcrab-projection-reviewer` |
 | **B1** Prepare | `ghostcrab-data-architect`, `ghostcrab-projection-reviewer` | [../scripts/analyze_projection_candidates.py](../scripts/analyze_projection_candidates.py) | `ghostcrab_project` (before human gate) |
 | **B1** Freeze | `ghostcrab-projection-reviewer` | — | any MCP write |
@@ -113,27 +118,33 @@ The StarterKit template lives at [../templates/import_path_choices.yaml](../temp
 ```text
 <project-root>/
   <workspace-slug>/
-    import_path_choices.yaml    # e.g. serenity-p3/import_path_choices.yaml
+    import_path_choices.yaml    # e.g. <workspace-slug>/import_path_choices.yaml
+  ontology/
+    core.yaml                   # single-module default
+    production.yaml             # multi-module: one file per module
   generated/
     import_manifest.yaml        # filled at audit (gate 9)
 ```
 
-**Pattern:** one `import_path_choices.yaml` per logical workspace, co-located with ontology sources or `generated/`. Set `workspace_id` to the GhostCrab workspace slug (kebab-case). Reference the file from SOP0 prompts and `ghostcrab-memory` checkpoints.
+**Pattern:** one `import_path_choices.yaml` per logical workspace. Set `workspace_id` to the GhostCrab workspace slug (kebab-case). Resolve starter-kit paths via [STARTERKIT_PATHS.md](STARTERKIT_PATHS.md).
 
-**Example (serenity-p3):**
+**Example (`<workspace-slug>`):**
 
 ```yaml
 edition: personal-mcp
-workspace_id: serenity-p3
+workspace_id: <workspace-slug>
 ontology_path:
   choice: linkml
 fake_data:
   choice: generate
 tabular_path:
   choice: structured_import_cli
+artefacts:
+  linkml_ontology: ontology/core.yaml
+  ontology_modules: []   # e.g. ["production","administrative","comptabilite"]
 ```
 
-Full delivery walkthrough for workspace `serenity-p3`: see project docs or the mvp-serenity `serenity-p3/` tree (ontology → convergence → B1 → B2 → C2 → agent smoke).
+Multi-module domains: register enum facets with `<module>.<slot_snake_case>` — see `ghostcrab-shared/ENUM_BUSINESS_FACETS.md` after `gcp brain setup`.
 
 ---
 

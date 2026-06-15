@@ -1,26 +1,49 @@
 ---
-description: GhostCrab MCP StarterKit — edition router for Cursor
+description: GhostCrab MCP StarterKit — edition router for Claude Code
 alwaysApply: true
 ---
 
 # GhostCrab MCP StarterKit
 
-## Edition (choose first)
+## Default edition: personal-mcp
 
-1. Read `starterkit/EDITIONS.md`
-2. Follow **one** file only:
-   - `starterkit/personal-mcp/SOP_SEQUENCE.md` — `gcp` + MCP, SQLite
-   - `starterkit/pro-mcp/SOP_SEQUENCE.md` — PostgreSQL, COPY, mindCLI
+1. Read `../EDITIONS.md` (switch to Pro only if explicit)
+2. Resolve paths: `../personal-mcp/STARTERKIT_PATHS.md`
+3. **Default load:**
+   - `../personal-mcp/ROUTE_MAP.md`
+   - `../personal-mcp/SOP_SEQUENCE.md`
+   - `../personal-mcp/SKILL_ROUTE_MAP.md` (full phase matrix)
+4. **Pro (independent):** `../pro-mcp/ROUTE_MAP.md` + `../pro-mcp/SOP_SEQUENCE.md`
+
+Root `SOP*.md` stubs point to personal-mcp by default — use edition folder SOPs, not root stubs.
+
+## GhostCrab skills (product)
+
+After `@mindflight/ghostcrab-personal-mcp` is installed:
+
+```bash
+gcp brain setup claude
+```
+
+- **Routine routing:** `~/.claude/skills/ghostcrab-shared/SKILL_ROUTE_MAP_ESSENTIALS.md`
+- **Full phase matrix:** `../personal-mcp/SKILL_ROUTE_MAP.md`
+- **Contracts:** `~/.claude/skills/ghostcrab-shared/` (`ENUM_BUSINESS_FACETS.md`, `PATH_CONTENT_FACETS.md`, `SCHEMA_DESIGN.md`, …). Skills replaced on each setup.
+
+## SOP0–SOP6 (complete per folder)
+
+Each edition folder contains its own SOP0–SOP6 (including local SOP2). Stay in one folder + `../templates/` + `../scripts/`.
 
 ## Constraints
 
-| Rule | personal-mcp | pro-mcp |
-|------|--------------|---------|
-| Bulk ingest | `gcp brain structured-import` | SOP3 COPY + SOP5 Voie A |
-| Documents | SOP6 `gcp brain document` | SOP3 |
+| Rule | personal-mcp (default) | pro-mcp |
+|------|------------------------|---------|
+| Bulk ingest | `gcp brain structured-import` | SOP3/SOP5 COPY |
+| Documents | SOP3 → SOP6 `gcp brain document` | SOP3 vault + SOP6 corpus COPY |
 | Projection audit | MCP only | MCP + mindCLI |
 | DDL Postgres Layer 1 | skip | `ghostcrab_ddl_*` |
 
 - Read before write: count → search → pack
-- `schema_id`: `<workspace_id>:<entity_type>`
+- Entity `schema_id`: `<workspace_id>:<entity_type>`
+- Facet enum schemas (LinkML): `<workspace_id>:<module>` with keys `<module>.<slot_snake_case>`
+- Ontology IDs (LinkML compile): `<workspace_id>::<module>`
 - Edge labels: `UPPER_SNAKE_CASE`
