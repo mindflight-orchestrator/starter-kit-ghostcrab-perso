@@ -37,6 +37,7 @@ Pour enregistrer l'ontologie de ce workspace, deux voies sont disponibles :
 
 1. Voie LinkML (recommandée)
    — ontology/core.yaml (module unique) ou ontology/<module>.yaml (multi-modules)
+   — si multi-modules / JSON source / aliases : ontology/<workspace>-contract.yaml + validation JSON ↔ LinkML
    — gcp brain ontology compile (dry-run puis --import-db)
    — Voir [SOP2_obsidian_ontologie.md](SOP2_obsidian_ontologie.md) section 6 bis
 
@@ -52,7 +53,7 @@ Quelle voie ? (1 ou 2)
 | `linkml` | SOP2 §6 bis + `../templates/linkml_ontology.stub.yaml` |
 | `mcp_incremental` | SOP2 §7 |
 
-**Multi-module:** list modules in `artefacts.ontology_modules`. After LinkML import, register enum facets as `<module>.<slot_snake_case>` — see installed `ghostcrab-shared/ENUM_BUSINESS_FACETS.md`.
+**Multi-module / JSON source:** list modules in `artefacts.ontology_modules` and create a project-local central contract (`ontology/<workspace>-contract.yaml`) before import. The contract records canonical ontology ids, public/internal naming, aliases, accepted renames, import order, `mappingProfile` rules, and the config consumed by `../scripts/validate_ontology_json_vs_linkml.py`. After LinkML import, register enum facets as `<module>.<slot_snake_case>` — see installed `ghostcrab-shared/ENUM_BUSINESS_FACETS.md`.
 
 Optional single-module reference: [ghostcrab-personal-mcp `ontologies/immeuble-demo`](https://github.com/mindflight-orchestrator/ghostcrab-personal-mcp/tree/main/ontologies/immeuble-demo).
 

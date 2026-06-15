@@ -56,7 +56,7 @@ Shared contracts install alongside skills under `ghostcrab-shared/` (e.g. `ONBOA
 |-----------|------------------|----------------------|----------------|
 | **A** Bootstrap | — | `gcp smoke`, `gcp brain up`, `ghostcrab_status` | `ghostcrab-gap-auditor` (no data to audit) |
 | **B0** Import choices | `ghostcrab-data-architect` | [../templates/import_path_choices.yaml](../templates/import_path_choices.yaml) | `ghostcrab-json-answer-builder` |
-| **B** Modeling | `ghostcrab-data-architect` | `ghostcrab_ontology_import`, `ghostcrab_schema_register` (`target=facets`), `gcp brain ontology compile` — enum facets `<module>.<slot>` per `ghostcrab-shared/ENUM_BUSINESS_FACETS.md` | `ghostcrab-projection-reviewer` |
+| **B** Modeling | `ghostcrab-data-architect` | `ghostcrab_ontology_import`, `ghostcrab_schema_register` (`target=facets`), `gcp brain ontology compile`, `validate_ontology_json_vs_linkml.py` when JSON + LinkML coexist — enum facets `<module>.<slot>` per `ghostcrab-shared/ENUM_BUSINESS_FACETS.md` | `ghostcrab-projection-reviewer` |
 | **B-fix** Convergence | `ghostcrab-gap-auditor` | `ghostcrab_graph_diagnostics`, project remediation scripts | `ghostcrab-projection-reviewer` |
 | **B1** Prepare | `ghostcrab-data-architect`, `ghostcrab-projection-reviewer` | [../scripts/analyze_projection_candidates.py](../scripts/analyze_projection_candidates.py) | `ghostcrab_project` (before human gate) |
 | **B1** Freeze | `ghostcrab-projection-reviewer` | — | any MCP write |
@@ -122,6 +122,7 @@ The StarterKit template lives at [../templates/import_path_choices.yaml](../temp
   ontology/
     core.yaml                   # single-module default
     production.yaml             # multi-module: one file per module
+    <workspace>-contract.yaml    # multi-module / JSON source / aliases / mappingProfile gate
   generated/
     import_manifest.yaml        # filled at audit (gate 9)
 ```
@@ -142,6 +143,7 @@ tabular_path:
 artefacts:
   linkml_ontology: ontology/core.yaml
   ontology_modules: []   # e.g. ["production","administrative","comptabilite"]
+  ontology_contract: ontology/<workspace-slug>-contract.yaml
 ```
 
 Multi-module domains: register enum facets with `<module>.<slot_snake_case>` — see `ghostcrab-shared/ENUM_BUSINESS_FACETS.md` after `gcp brain setup`.

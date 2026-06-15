@@ -16,7 +16,7 @@
 | Phase A | Bootstrap SQLite + MCP | [SOP4](SOP4_environment_bootstrap.md) |
 | `ghostcrab_status` OK | Choix de voies d'import | [SOP0](SOP0_import_path_choices.md) + `../templates/import_path_choices.yaml` |
 | B0 done | Modéliser workspace | [SOP1](SOP1_ghostcrab_mcp.md) + [SOP2](SOP2_obsidian_ontologie.md) |
-| LinkML (SOP0) | Ontologie formelle | SOP2 §6 bis + `../templates/linkml_ontology.stub.yaml` |
+| LinkML (SOP0) | Ontologie formelle | SOP2 §6 bis + `../templates/linkml_ontology.stub.yaml`; si multi-module/JSON : `ontology/<workspace>-contract.yaml` + `../scripts/validate_ontology_json_vs_linkml.py` |
 | MCP incrémental (SOP0) | Seed unitaire | SOP2 §7 |
 | Phase B — specs OK | **Préparer projections** | [§ Route projections](#route-projections) + `../scripts/README_projection_tools.md` |
 | Projections validées | Matérialiser catalogue | `ghostcrab_project` + confirmation utilisateur |
@@ -47,7 +47,7 @@ flowchart LR
 |-------|-----|-----------|-----------|
 | A | SOP4 | `gcp smoke`, `gcp brain up`, `ghostcrab_status` | SQLite OK, outils MCP visibles |
 | B0 | SOP0 | `import_path_choices.yaml` | choix enregistrés |
-| B | SOP1 + SOP2 | MCP + LinkML ou incrémental | `ghostcrab_coverage` baseline |
+| B | SOP1 + SOP2 | MCP + LinkML ou incrémental | contrat central/gate JSON ↔ LinkML si applicable, puis `ghostcrab_coverage` baseline |
 | **B1** | scripts projections | candidats + validation humaine | catalogue déclaré prêt |
 | **B2** | fake-data métier | CSV `import_ready/` + manifest | gates 2–4 dry-run OK |
 | C (opt.) | SOP3 | parsing vault → JSONB | validator OK |
@@ -260,6 +260,7 @@ document_path:
 | **Projections — auditer** | `audit_ghostcrab_projections.py` |
 | **Fake-data métier (B2)** | script Python projet + gates `profile_source` / `transform` |
 | Ontologie formelle | `gcp brain ontology compile` |
+| Gate JSON ontologique ↔ LinkML | `validate_ontology_json_vs_linkml.py` |
 | Documents bulk | `gcp brain document` (SOP6) |
 | Tabulaire bulk | `gcp brain structured-import` (SOP5) |
 | Audit agent | MCP search, pack, coverage |
@@ -273,6 +274,7 @@ document_path:
 1. `../templates/jtbd.yaml`
 2. `../templates/mvp_core_contract.yaml`
 3. `../templates/ontology_core_provisioning.yaml`
+3 bis. `ontology/<workspace>-contract.yaml` si multi-module / JSON source / aliases / mappingProfile
 4. `../templates/initial_referential.yaml`
 5. `../templates/mapping_external_to_canonical.yaml`
 6. `../templates/disambiguation.yaml`

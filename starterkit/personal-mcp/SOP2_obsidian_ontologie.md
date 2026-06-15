@@ -476,6 +476,8 @@ Cette voie enregistre l'ontologie comme artefact LinkML versionné, compilé et 
 | `../templates/linkml_ontology.stub.yaml` | Squelette de départ |
 | `ontology/core.yaml` | Ontologie domaine mono-module (défaut) |
 | `ontology/<module>.yaml` | Ontologie multi-modules (un fichier par module LinkML) |
+| `ontology/<workspace>-contract.yaml` | Contrat central multi-ontologies : nommage public/interne, aliases, imports, ordre d'import, mappingProfile, gates |
+| `../scripts/validate_ontology_json_vs_linkml.py` | Gate read-only JSON ontologique ↔ LinkML avant import |
 | `output/ontology-slice.json` | Sortie dry-run compile (inspection) |
 
 Références optionnelles : [ghostcrab-personal-mcp `ontologies/immeuble-demo`](https://github.com/mindflight-orchestrator/ghostcrab-personal-mcp/tree/main/ontologies/immeuble-demo) (mono-module).
@@ -485,7 +487,24 @@ Références optionnelles : [ghostcrab-personal-mcp `ontologies/immeuble-demo`](
 1. Compléter `jtbd.yaml` et obtenir confirmation du Model Proposal (identique voie MCP incrémentale).
 2. Copier `../templates/linkml_ontology.stub.yaml` vers `ontology/core.yaml`.
 3. Le LLM étend le stub : classes, enums, slots, annotations `ghostcrab.native_entity_type` / `ghostcrab.native_edge_type`.
-4. **Validation dry-run** (obligatoire, sans écriture DB) :
+4. Si le modèle est multi-module, dérivé de JSON, ou contient des renommages/aliases, produire `ontology/<workspace>-contract.yaml` avant tout import. Le contrat central doit figer :
+   - `workspace_id`, edition, backend et statut de décision ;
+   - ontologies canoniques, labels publics, rôles internes et aliases historiques ;
+   - imports attendus, ordre d'import, entrypoints techniques ;
+   - règles `mappingProfile` pour API/applications externes ;
+   - gates de validation et section `aliases` / `checks` consommée par le validateur.
+5. **Validation JSON ↔ LinkML** (obligatoire si des JSON ontologiques existent, sans écriture DB) :
+   ```bash
+   python3 ../scripts/validate_ontology_json_vs_linkml.py \
+     --json-dir ontology \
+     --linkml-dir ontology \
+     --manifest ontology/manifest.json \
+     --config ontology/<workspace>-contract.yaml \
+     --output generated/<workspace_id>/reports/json_vs_linkml.validation.json \
+     --markdown-output generated/<workspace_id>/reports/json_vs_linkml.validation.md
+   ```
+   `ok=false` bloque l'import si le rapport contient des `blocking` réels : classes manquantes, slots manquants, edges absents, enums non préservés, imports divergents. Les aliases validés dans le contrat ne sont pas des erreurs.
+6. **Validation dry-run LinkML** (obligatoire, sans écriture DB) :
    ```bash
    gcp brain ontology compile \
      --workspace-id <workspace_id> \
@@ -493,9 +512,9 @@ Références optionnelles : [ghostcrab-personal-mcp `ontologies/immeuble-demo`](
      --input ontology/core.yaml \
      --output output/ontology-slice.json
    ```
-5. Corriger `core.yaml` jusqu'à exit 0 ; vérifier cohérence JTBD ↔ classes/enums/relations.
-6. Présenter le résumé ontologique à l'utilisateur et obtenir confirmation.
-7. **Import** :
+7. Corriger `core.yaml` jusqu'à exit 0 ; vérifier cohérence JTBD ↔ classes/enums/relations.
+8. Présenter le résumé ontologique à l'utilisateur et obtenir confirmation.
+9. **Import** :
    ```bash
    gcp brain ontology compile \
      --workspace-id <workspace_id> \
@@ -503,11 +522,52 @@ Références optionnelles : [ghostcrab-personal-mcp `ontologies/immeuble-demo`](
      --input ontology/core.yaml \
      --import-db --force
    ```
-8. Vérification post-import : `ghostcrab_ontology_list`, `ghostcrab_coverage`.
+10. Vérification post-import : `ghostcrab_ontology_list`, `ghostcrab_coverage`.
 
-**Multi-module :** répéter étapes 2–8 par module avec `ontology_id: <workspace_id>::<module>`. Ordre de compile recommandé (catalogue Serenity V4) : `production` → `administrative` → `comptabilite` → `decisionnel` → `technique` → `missions` — voir `ghostcrab-shared/ENUM_BUSINESS_FACETS.md` pour la liste complète des enum facets par module. Enregistrer la liste dans `import_path_choices.yaml` → `artefacts.ontology_modules`.
+**Multi-module :** exécuter le gate JSON ↔ LinkML une fois sur l'ensemble, puis répéter les étapes 6–10 par module avec `ontology_id: <workspace_id>::<module>`. Ordre de compile recommandé (catalogue Serenity V4) : `production` → `administrative` → `comptabilite` → `decisionnel` → `technique` → `missions` — voir `ghostcrab-shared/ENUM_BUSINESS_FACETS.md` pour la liste complète des enum facets par module. Enregistrer la liste dans `import_path_choices.yaml` → `artefacts.ontology_modules`.
 
-### 6 bis.2a — Enum facet layer (LinkML → MCP)
+### 6 bis.2a — Contrat central multi-ontologies
+
+Créer ce contrat quand au moins une condition est vraie : plusieurs ontologies, présence d'artefacts JSON en plus des YAML LinkML, renommage public/interne, aliases historiques, entrypoint technique distinct, ou couche `mappingProfile`.
+
+Structure minimale :
+
+```yaml
+workspace_id: <workspace_id>
+contract_kind: ontology_bundle_contract
+edition: personal-mcp
+status: draft|confirmed
+
+naming_policy:
+  public_labels_are_client_language: true
+  internal_roles_are_explicit: true
+
+canonical_domains:
+  - id: production
+    public_label: Production
+    role: shared_client_referential
+  - id: mapping-profile
+    public_label: mappingProfile
+    role: external_app_mapping_layer
+
+aliases:
+  ontology:
+    core: production
+  concepts: {}
+  properties: {}
+  edges: {}
+
+checks:
+  require_all_json_nodes_in_linkml: true
+  require_all_json_properties_in_linkml: true
+  require_all_json_edges_in_linkml: true
+  require_imports_match_manifest: true
+  allow_aliases: true
+```
+
+Ce fichier est à la fois un contrat humain et la configuration du validateur. Les noms clients restent stables ; les rôles internes servent seulement à désambiguïser les couches techniques.
+
+### 6 bis.2b — Enum facet layer (LinkML → MCP)
 
 Après import LinkML par module, enregistrer la **couche enum métier** (automatiquement — ne pas attendre que l'utilisateur demande le préfixage).
 
@@ -581,7 +641,7 @@ Pour l'enregistrement progressif via MCP (`ghostcrab_schema_register`, `remember
 
 Un appel par ontologie candidate. L'ordre suit la dépendance (les pivots en premier).
 
-> **Facet keys dans cette voie :** les clés ci-dessous sont **ingest / entité** (Obsidian frontmatter, pas enums LinkML). Pour les enums métier après LinkML, utiliser la voie 6 bis.2a et `<module>.<slot_snake_case>` (`ghostcrab-shared/ENUM_BUSINESS_FACETS.md`). Pour l'ingest documentaire, voir `ghostcrab-shared/PATH_CONTENT_FACETS.md`.
+> **Facet keys dans cette voie :** les clés ci-dessous sont **ingest / entité** (Obsidian frontmatter, pas enums LinkML). Pour les enums métier après LinkML, utiliser la voie 6 bis.2b et `<module>.<slot_snake_case>` (`ghostcrab-shared/ENUM_BUSINESS_FACETS.md`). Pour l'ingest documentaire, voir `ghostcrab-shared/PATH_CONTENT_FACETS.md`.
 
 ```json
 // ghostcrab_schema_register — exemple décision (ingest / entité, pas enum LinkML)
@@ -596,7 +656,7 @@ Un appel par ontologie candidate. L'ordre suit la dépendance (les pivots en pre
 }
 ```
 
-Exemple **enum facet LinkML** (voie 6 bis.2a, pas cette étape MCP incrémentale) :
+Exemple **enum facet LinkML** (voie 6 bis.2b, pas cette étape MCP incrémentale) :
 
 ```json
 // ghostcrab_schema_register — target: "facets", schema_id: "<workspace_id>:<module>"
@@ -896,6 +956,8 @@ specs/
   initial_referential.yaml            # 4e — entités stables à seeder (clients, types, phases)
   mapping_external_to_canonical.yaml  # 5e — mapping tags/dossiers/frontmatter → schema_id
   disambiguation.yaml                 # 6e — dictionnaire de synonymes et pivots canoniques
+ontology/
+  <workspace>-contract.yaml           # conditionnel — contrat central multi-ontologies / JSON / aliases / mappingProfile
 ```
 
 ## Annexe B — Liste fermée des edge labels

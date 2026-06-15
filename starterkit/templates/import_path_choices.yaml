@@ -44,6 +44,9 @@ artefacts:
   linkml_ontology: "ontology/core.yaml"
   ontology_modules: []
   # Multi-module example: ["production", "administrative", "comptabilite", "decisionnel", "technique", "missions"]
+  # Required when ontology_modules, JSON source artifacts, aliases, or mappingProfile are involved.
+  ontology_contract: null
+  ontology_validation_script: "{starterkit}/scripts/validate_ontology_json_vs_linkml.py"
   ontology_compile_slice: "output/ontology-slice.json"
   # Template source: {starterkit}/templates/import_manifest.yaml
   # Runtime copy (gate 9): {project}/generated/<workspace_id>/import_manifest.yaml
