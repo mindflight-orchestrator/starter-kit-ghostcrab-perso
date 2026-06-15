@@ -27,6 +27,7 @@ import argparse
 import json
 import re
 import sys
+import unicodedata
 from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -81,6 +82,21 @@ class Issue:
 
 
 @dataclass
+class Recommendation:
+    code: str
+    action: str
+    target_file: str
+    ontology: str = ""
+    target: str = ""
+    summary: str = ""
+    rationale: str = ""
+    affected_count: int = 0
+    linkml_snippet: str = ""
+    issue_codes: list[str] = field(default_factory=list)
+    confidence: str = "medium"
+
+
+@dataclass
 class JsonNode:
     node_id: str
     ontology: str
@@ -120,6 +136,17 @@ def slug(value: Any) -> str:
     text = re.sub(r"[^0-9A-Za-z_]+", "", text)
     text = re.sub(r"_+", "_", text)
     return text.strip("_").lower()
+
+
+def ascii_slug(value: Any) -> str:
+    text = unicodedata.normalize("NFKD", str(value or ""))
+    text = text.encode("ascii", "ignore").decode("ascii")
+    return slug(text)
+
+
+def pascal_case(value: Any) -> str:
+    parts = [part for part in re.split(r"[_\W]+", ascii_slug(value)) if part]
+    return "".join(part[:1].upper() + part[1:] for part in parts) or "Unnamed"
 
 
 def camel_to_slug(value: str) -> str:
@@ -280,6 +307,7 @@ def load_linkml_structures(linkml_dir: Path, config: dict[str, Any]) -> dict[str
     class_defs_by_name: dict[str, dict[str, Any]] = {}
     class_files_by_name: dict[str, str] = {}
     slots: dict[str, dict[str, Any]] = {}
+    slots_by_file: dict[str, dict[str, dict[str, Any]]] = defaultdict(dict)
     enums: set[str] = set()
     relation_tokens: set[str] = set()
     ontology_meta: list[dict[str, Any]] = []
@@ -301,7 +329,9 @@ def load_linkml_structures(linkml_dir: Path, config: dict[str, Any]) -> dict[str
             if not isinstance(slot_def, dict):
                 slot_def = {}
             normalized = normalize_concept(slot_name, property_aliases)
-            slots[normalized] = {"name": slot_name, "file": str(path), **slot_def}
+            slot_record = {"name": slot_name, "file": str(path), **slot_def}
+            slots[normalized] = slot_record
+            slots_by_file[str(path)][normalized] = slot_record
             annotations = slot_def.get("annotations") or {}
             native_edge = annotation_value(annotations, "ghostcrab.native_edge_label")
             if native_edge:
@@ -342,9 +372,12 @@ def load_linkml_structures(linkml_dir: Path, config: dict[str, Any]) -> dict[str
                 source=str(annotation_value(annotations, "source") or annotation_value(annotations, "source_document") or ""),
             )
             by_name_key = normalize_concept(camel_to_slug(str(class_name)), concept_aliases)
+            by_name_source_key = slug(camel_to_slug(str(class_name)))
             classes_by_name[by_name_key] = item
+            classes_by_name[by_name_source_key] = item
             if native:
                 classes_by_native[normalize_concept(native, concept_aliases)] = item
+                classes_by_native[slug(native)] = item
 
             native_edge = annotation_value(annotations, "ghostcrab.native_edge_label")
             relation_kind = annotation_value(annotations, "ghostcrab.relation")
@@ -360,6 +393,7 @@ def load_linkml_structures(linkml_dir: Path, config: dict[str, Any]) -> dict[str
         "classes_by_name": classes_by_name,
         "class_range_tokens": set(classes_by_name.keys()) | set(classes_by_native.keys()),
         "slots": slots,
+        "slots_by_file": slots_by_file,
         "enums": enums,
         "relation_tokens": relation_tokens,
         "ontology_meta": ontology_meta,
@@ -378,12 +412,154 @@ def slot_range(slot_def: dict[str, Any]) -> str:
     return str(value)
 
 
+def enum_name_for_slot(slot_name: str) -> str:
+    return f"{pascal_case(slot_name)}Enum"
+
+
+def enum_values_from_property(prop: dict[str, Any]) -> list[str]:
+    values = prop.get("values")
+    raw_values: list[Any]
+    if isinstance(values, list):
+        raw_values = values
+    else:
+        raw = str(prop.get("value") or "")
+        raw_values = re.split(r"\s*/\s*|\s*;\s*|\s*,\s*", raw) if raw else []
+    normalized: list[str] = []
+    for item in raw_values:
+        value = ascii_slug(item)
+        if value and value not in normalized:
+            normalized.append(value)
+    return normalized
+
+
+def reference_target_from_property(prop: dict[str, Any]) -> str:
+    targets = prop.get("targets")
+    if isinstance(targets, list) and targets:
+        return pascal_case(targets[0])
+    value = str(prop.get("value") or "")
+    match = re.search(r"r[ée]f[ée]rence\s+([A-Za-zÀ-ÿ0-9_ -]+)", value, flags=re.IGNORECASE)
+    if match:
+        return pascal_case(match.group(1).strip())
+    return "string"
+
+
+def inferred_slot_range(prop: dict[str, Any]) -> tuple[str, bool]:
+    json_type = slug(prop.get("type") or "")
+    if json_type == "enum":
+        return enum_name_for_slot(str(prop.get("name") or "value")), False
+    if json_type == "reference":
+        return reference_target_from_property(prop), False
+    if json_type == "reference_list":
+        return reference_target_from_property(prop), True
+    if json_type in {"integer", "int"}:
+        return "integer", False
+    if json_type in {"decimal", "float", "number"}:
+        return "decimal", False
+    if json_type in {"boolean", "bool"}:
+        return "boolean", False
+    if json_type == "date":
+        return "date", False
+    if json_type == "datetime":
+        return "datetime", False
+    return "string", False
+
+
+def yaml_quote(value: Any) -> str:
+    return json.dumps(str(value), ensure_ascii=False)
+
+
+def render_slot_definition(slot_name: str, prop: dict[str, Any]) -> str:
+    slot_range_value, multivalued = inferred_slot_range(prop)
+    lines = [f"  {slot_name}:"]
+    label = str(prop.get("label") or "").strip()
+    description = str(prop.get("value") or "").strip()
+    if label and label != slot_name:
+        lines.append(f"    title: {yaml_quote(label)}")
+    if description:
+        lines.append(f"    description: {yaml_quote(description)}")
+    lines.append(f"    range: {slot_range_value}")
+    if multivalued:
+        lines.append("    multivalued: true")
+    source = str(prop.get("source") or "").strip()
+    if source:
+        lines.extend(
+            [
+                "    annotations:",
+                f"      source: {yaml_quote(source)}",
+            ]
+        )
+    return "\n".join(lines)
+
+
+def render_enum_definition(slot_name: str, prop: dict[str, Any]) -> str:
+    values = enum_values_from_property(prop)
+    if not values:
+        return ""
+    lines = [f"  {enum_name_for_slot(slot_name)}:", "    permissible_values:"]
+    for value in values:
+        lines.append(f"      {value}:")
+    return "\n".join(lines)
+
+
+def render_class_definition(node: JsonNode) -> str:
+    class_name = pascal_case(node.node_id)
+    lines = [
+        f"  {class_name}:",
+        "    is_a: EntiteSerenity",
+        f"    title: {yaml_quote(node.node_id.replace('_', ' ').title())}",
+        "    slots:",
+    ]
+    for prop in node.properties:
+        prop_name = slug(prop.get("name") or "")
+        if prop_name:
+            lines.append(f"      - {prop_name}")
+    lines.extend(
+        [
+            "    annotations:",
+            f"      ghostcrab.native_entity_type: {node.node_id}",
+        ]
+    )
+    if node.source:
+        lines.append(f"      source: {yaml_quote(node.source)}")
+    return "\n".join(lines)
+
+
+def render_relation_class(edge: JsonEdge) -> str:
+    class_name = pascal_case(edge.edge_id or f"{edge.source_node}_{edge.action}_{edge.target_node}_relation")
+    native_label = normalize_edge_label(edge.action or edge.label or edge.edge_id, {})
+    lines = [
+        f"  {class_name}:",
+        "    is_a: EntiteSerenity",
+        f"    title: {yaml_quote(edge.label or edge.action or edge.edge_id)}",
+        "    slots:",
+        "      - source_entity",
+        "      - target_entity",
+    ]
+    for prop in edge.properties:
+        prop_name = slug(prop.get("name") or "")
+        if prop_name:
+            lines.append(f"      - {prop_name}")
+    lines.extend(
+        [
+            "    annotations:",
+            "      ghostcrab.native_edge_type: true",
+            f"      ghostcrab.native_edge_label: {native_label}",
+            f"      ghostcrab.source_entity_type: {edge.source_node}",
+            f"      ghostcrab.target_entity_type: {edge.target_node}",
+        ]
+    )
+    if edge.source:
+        lines.append(f"      source: {yaml_quote(edge.source)}")
+    return "\n".join(lines)
+
+
 def is_type_compatible(json_type: str, linkml_range: str, enums: set[str], class_range_tokens: set[str]) -> bool:
     json_key = slug(json_type)
     range_key = slug(linkml_range)
+    range_class_key = slug(camel_to_slug(linkml_range))
     if not json_key:
         return True
-    if json_key in {"reference", "reference_list"} and range_key in class_range_tokens:
+    if json_key in {"reference", "reference_list"} and (range_key in class_range_tokens or range_class_key in class_range_tokens):
         return True
     if json_key == "enum":
         return linkml_range in enums or range_key.endswith("enum") or range_key == "string"
@@ -412,6 +588,223 @@ def manifest_imports(manifest: dict[str, Any], ontology_aliases: dict[str, str])
         name = normalize_ontology(item.get("name") or str(item.get("ontology_id") or "").split("::")[-1], ontology_aliases)
         result[name] = {normalize_ontology(str(x).split("::")[-1], ontology_aliases) for x in item.get("imports") or []}
     return result
+
+
+def build_recommendations(
+    issues: list[Issue],
+    json_nodes: list[JsonNode],
+    json_edges: list[JsonEdge],
+    linkml: dict[str, Any],
+    manifest: dict[str, Any],
+    config: dict[str, Any],
+) -> list[Recommendation]:
+    concept_aliases = alias_map(config, "concepts")
+    property_aliases = alias_map(config, "properties")
+    ontology_aliases = alias_map(config, "ontology")
+
+    nodes_by_key = {(node.ontology, node.node_id): node for node in json_nodes}
+    props_by_key: dict[tuple[str, str, str], dict[str, Any]] = {}
+    for node in json_nodes:
+        for prop in node.properties:
+            prop_name = str(prop.get("name") or "")
+            props_by_key[(node.ontology, node.node_id, prop_name)] = prop
+
+    edges_by_key = {(edge.ontology, edge.edge_id): edge for edge in json_edges}
+    ontology_files: dict[str, str] = {}
+    for item in linkml.get("ontology_meta", []):
+        name = normalize_ontology(item.get("name") or Path(str(item.get("file") or "")).stem, ontology_aliases)
+        ontology_files[name] = str(item.get("file") or "")
+
+    issue_codes_by_group: dict[tuple[str, str], set[str]] = defaultdict(set)
+    for issue in issues:
+        issue_codes_by_group[(issue.code, issue.ontology)].add(issue.code)
+
+    recommendations: list[Recommendation] = []
+
+    missing_nodes: dict[str, list[JsonNode]] = defaultdict(list)
+    for issue in issues:
+        if issue.code == "node_in_json_missing_in_linkml":
+            node = nodes_by_key.get((issue.ontology, issue.node))
+            if node:
+                missing_nodes[issue.ontology].append(node)
+    for ontology, nodes in sorted(missing_nodes.items()):
+        snippets = ["classes:"]
+        for node in nodes:
+            snippets.append(render_class_definition(node))
+        recommendations.append(
+            Recommendation(
+                code="create_missing_linkml_classes",
+                action="add_classes",
+                target_file=ontology_files.get(ontology) or f"ontology/{ontology}.yaml",
+                ontology=ontology,
+                target="classes",
+                summary=f"Create {len(nodes)} LinkML class(es) missing from JSON nodes.",
+                rationale="Every JSON node must have a LinkML class with ghostcrab.native_entity_type before import.",
+                affected_count=len(nodes),
+                linkml_snippet="\n".join(snippets),
+                issue_codes=["node_in_json_missing_in_linkml"],
+            )
+        )
+
+    missing_slot_defs: dict[str, dict[str, Any]] = {}
+    slot_def_ontologies: dict[str, set[str]] = defaultdict(set)
+    for issue in issues:
+        if issue.code == "property_slot_missing_in_linkml":
+            prop = props_by_key.get((issue.ontology, issue.node, issue.property))
+            if prop:
+                slot_name = normalize_concept(issue.property, property_aliases)
+                missing_slot_defs.setdefault(slot_name, prop)
+                slot_def_ontologies[slot_name].add(issue.ontology)
+    if missing_slot_defs:
+        enum_snippets: list[str] = []
+        slot_snippets = ["slots:"]
+        for slot_name, prop in sorted(missing_slot_defs.items()):
+            enum_snippet = render_enum_definition(slot_name, prop)
+            if enum_snippet:
+                enum_snippets.append(enum_snippet)
+            slot_snippets.append(render_slot_definition(slot_name, prop))
+        snippet_parts: list[str] = []
+        if enum_snippets:
+            snippet_parts.append("enums:")
+            snippet_parts.extend(enum_snippets)
+        snippet_parts.extend(slot_snippets)
+        recommendations.append(
+            Recommendation(
+                code="define_missing_linkml_slots",
+                action="add_slots",
+                target_file="ontology/<module>.yaml",
+                target="slots",
+                summary=f"Define {len(missing_slot_defs)} missing LinkML slot(s).",
+                rationale="Properties found in JSON must be declared as LinkML slots. Place each slot in the owning module, or in a shared module when reused.",
+                affected_count=len(missing_slot_defs),
+                linkml_snippet="\n".join(snippet_parts),
+                issue_codes=["property_slot_missing_in_linkml"],
+                confidence="medium",
+            )
+        )
+
+    missing_slots_by_class: dict[tuple[str, str, str], set[str]] = defaultdict(set)
+    for issue in issues:
+        if issue.code == "property_in_json_missing_in_linkml_class":
+            linkml_class = find_linkml_class(issue.node, linkml, concept_aliases)
+            if linkml_class:
+                slot_name = normalize_concept(issue.property, property_aliases)
+                missing_slots_by_class[(issue.ontology, linkml_class.file, linkml_class.name)].add(slot_name)
+    for (ontology, target_file, class_name), slot_names in sorted(missing_slots_by_class.items()):
+        lines = ["classes:", f"  {class_name}:", "    slots:", "      # append these slots:"]
+        for slot_name in sorted(slot_names):
+            lines.append(f"      - {slot_name}")
+        recommendations.append(
+            Recommendation(
+                code="attach_slots_to_linkml_classes",
+                action="append_class_slots",
+                target_file=target_file,
+                ontology=ontology,
+                target=class_name,
+                summary=f"Attach {len(slot_names)} slot(s) to LinkML class {class_name}.",
+                rationale="The slot may exist globally, but the class does not expose it in its slots list.",
+                affected_count=len(slot_names),
+                linkml_snippet="\n".join(lines),
+                issue_codes=["property_in_json_missing_in_linkml_class"],
+                confidence="high",
+            )
+        )
+
+    type_mismatches: dict[tuple[str, str, str, str], tuple[dict[str, Any], Issue]] = {}
+    for issue in issues:
+        if issue.code == "property_type_mismatch":
+            prop = props_by_key.get((issue.ontology, issue.node, issue.property))
+            if prop:
+                linkml_class = find_linkml_class(issue.node, linkml, concept_aliases)
+                target_file = linkml_class.file if linkml_class else ontology_files.get(issue.ontology) or f"ontology/{issue.ontology}.yaml"
+                slot_name = normalize_concept(issue.property, property_aliases)
+                type_mismatches[(issue.ontology, target_file, issue.node, slot_name)] = (prop, issue)
+    for (ontology, target_file, node_id, slot_name), (prop, issue) in sorted(type_mismatches.items()):
+        inferred_range, multivalued = inferred_slot_range(prop)
+        enum_snippet = render_enum_definition(slot_name, prop)
+        lines: list[str] = []
+        if enum_snippet:
+            lines.extend(["enums:", enum_snippet])
+        lines.extend(["slots:", f"  {slot_name}:", f"    range: {inferred_range}"])
+        if multivalued:
+            lines.append("    multivalued: true")
+        recommendations.append(
+            Recommendation(
+                code="align_slot_range_with_json_type",
+                action="update_slot_range",
+                target_file=target_file,
+                ontology=ontology,
+                target=slot_name,
+                summary=f"Review range for slot {slot_name}: JSON says {issue.expected}, LinkML says {issue.observed}.",
+                rationale="The suggested range is inferred from JSON type/targets and must be checked against business semantics.",
+                affected_count=1,
+                linkml_snippet="\n".join(lines),
+                issue_codes=["property_type_mismatch"],
+                confidence="medium",
+            )
+        )
+
+    missing_edges: dict[str, list[JsonEdge]] = defaultdict(list)
+    for issue in issues:
+        if issue.code == "edge_in_json_missing_in_linkml":
+            edge = edges_by_key.get((issue.ontology, issue.edge))
+            if edge:
+                missing_edges[issue.ontology].append(edge)
+    for ontology, edges in sorted(missing_edges.items()):
+        relation_snippets = ["classes:"]
+        edge_slot_defs: dict[str, dict[str, Any]] = {}
+        for edge in edges:
+            relation_snippets.append(render_relation_class(edge))
+            for prop in edge.properties:
+                prop_name = normalize_concept(prop.get("name") or "", property_aliases)
+                if prop_name:
+                    edge_slot_defs.setdefault(prop_name, prop)
+        if edge_slot_defs:
+            relation_snippets.append("slots:")
+            relation_snippets.extend(render_slot_definition(name, prop) for name, prop in sorted(edge_slot_defs.items()))
+        recommendations.append(
+            Recommendation(
+                code="materialize_missing_linkml_relations",
+                action="add_relation_classes",
+                target_file=ontology_files.get(ontology) or f"ontology/{ontology}.yaml",
+                ontology=ontology,
+                target="relations",
+                summary=f"Materialize {len(edges)} JSON edge(s) as LinkML relation classes or relation-like slots.",
+                rationale="JSON graph edges must be represented by native edge annotations or relation-like slots before import.",
+                affected_count=len(edges),
+                linkml_snippet="\n".join(relation_snippets),
+                issue_codes=["edge_in_json_missing_in_linkml"],
+                confidence="medium",
+            )
+        )
+
+    if manifest:
+        expected_imports = manifest_imports(manifest, ontology_aliases)
+        import_issues = [issue for issue in issues if issue.code in {"json_imports_do_not_match_manifest", "linkml_imports_do_not_match_manifest"}]
+        if import_issues:
+            lines_by_ontology: list[str] = []
+            for ontology, imports in sorted(expected_imports.items()):
+                lines_by_ontology.extend([f"# {ontology}.yaml", "imports:", "  - linkml:types"])
+                for item in sorted(imports):
+                    lines_by_ontology.append(f"  - {item}")
+                lines_by_ontology.append("")
+            recommendations.append(
+                Recommendation(
+                    code="align_imports_with_manifest",
+                    action="update_imports",
+                    target_file="ontology/*.yaml and ontology/*.json metadata.imports",
+                    target="imports",
+                    summary=f"Align imports for {len(import_issues)} manifest mismatch issue(s).",
+                    rationale="Manifest imports are the bundle contract. JSON metadata.imports and LinkML imports should match it after aliases.",
+                    affected_count=len(import_issues),
+                    linkml_snippet="\n".join(lines_by_ontology).strip(),
+                    issue_codes=sorted({issue.code for issue in import_issues}),
+                    confidence="high",
+                )
+            )
+
+    recommendations.sort(key=lambda rec: (rec.target_file, rec.code, rec.target))
+    return recommendations
 
 
 def validate(json_dir: Path, linkml_dir: Path, manifest_path: Path | None, config: dict[str, Any]) -> dict[str, Any]:
@@ -461,7 +854,7 @@ def validate(json_dir: Path, linkml_dir: Path, manifest_path: Path | None, confi
         for prop in node.properties:
             prop_name = str(prop.get("name") or "")
             normalized_prop = normalize_concept(prop_name, property_aliases)
-            slot_def = linkml["slots"].get(normalized_prop)
+            slot_def = (linkml.get("slots_by_file") or {}).get(linkml_class.file, {}).get(normalized_prop) or linkml["slots"].get(normalized_prop)
             in_class = normalized_prop in linkml_class.slots
             if active_checks.get("require_all_json_properties_in_linkml", True) and not in_class:
                 issues.append(
@@ -565,6 +958,7 @@ def validate(json_dir: Path, linkml_dir: Path, manifest_path: Path | None, confi
     severity_counts = Counter(issue.severity for issue in issues)
     blocking = [asdict(issue) for issue in issues if issue.severity == "blocking"]
     warnings = [asdict(issue) for issue in issues if issue.severity == "warning"]
+    recommendations = build_recommendations(issues, json_nodes, json_edges, linkml, manifest, config)
 
     return {
         "ok": not blocking,
@@ -584,6 +978,7 @@ def validate(json_dir: Path, linkml_dir: Path, manifest_path: Path | None, confi
         },
         "blocking": blocking,
         "warnings": warnings,
+        "recommendations": [asdict(item) for item in recommendations],
         "observed": {
             "json_ontologies": json_meta,
             "linkml_ontologies": linkml["ontology_meta"],

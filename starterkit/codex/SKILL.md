@@ -25,7 +25,8 @@ gcp brain setup codex
 - personal-mcp (default): no mindCLI, no COPY, no `generate_copy_migrations.mjs`.
 - pro-mcp: no `gcp brain structured-import` as sole bulk path; mindCLI for pragma audit.
 - `ghostcrab_status` before modeling; `edition: personal-mcp` in `import_path_choices.yaml`.
-- Multi-module LinkML or JSON ontology sources: require a project-local central ontology contract (`ontology/<workspace>-contract.yaml`) and run `starterkit/scripts/validate_ontology_json_vs_linkml.py` before any ontology import.
+- Multi-module LinkML or JSON ontology sources: require a project-local central ontology contract (`ontology/<workspace>-contract.yaml`); when JSON is source, generate LinkML with `starterkit/scripts/generate_linkml_from_ontology_json.py`, then run `starterkit/scripts/validate_ontology_json_vs_linkml.py` before any ontology import.
+- OpenAPI sources describe generic application interfaces. Analyze them first with `starterkit/scripts/analyze_openapi_for_mapping_profile.py`; review the generated `mappingProfile` before mapping to canonical business ontologies.
 
 ## Complete SOP set (each folder)
 

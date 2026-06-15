@@ -477,6 +477,7 @@ Cette voie enregistre l'ontologie comme artefact LinkML versionné, compilé et 
 | `ontology/core.yaml` | Ontologie domaine mono-module (défaut) |
 | `ontology/<module>.yaml` | Ontologie multi-modules (un fichier par module LinkML) |
 | `ontology/<workspace>-contract.yaml` | Contrat central multi-ontologies : nommage public/interne, aliases, imports, ordre d'import, mappingProfile, gates |
+| `../scripts/generate_linkml_from_ontology_json.py` | Générateur JSON ontologique → YAML LinkML, à utiliser si les JSON existent déjà |
 | `../scripts/validate_ontology_json_vs_linkml.py` | Gate read-only JSON ontologique ↔ LinkML avant import |
 | `output/ontology-slice.json` | Sortie dry-run compile (inspection) |
 
@@ -493,18 +494,29 @@ Références optionnelles : [ghostcrab-personal-mcp `ontologies/immeuble-demo`](
    - imports attendus, ordre d'import, entrypoints techniques ;
    - règles `mappingProfile` pour API/applications externes ;
    - gates de validation et section `aliases` / `checks` consommée par le validateur.
-5. **Validation JSON ↔ LinkML** (obligatoire si des JSON ontologiques existent, sans écriture DB) :
+5. Si des JSON ontologiques existent déjà, générer d'abord une base LinkML complète dans un dossier séparé :
+   ```bash
+   python3 ../scripts/generate_linkml_from_ontology_json.py \
+     --json-dir ontology \
+     --manifest ontology/manifest.json \
+     --config ontology/<workspace>-contract.yaml \
+     --output-dir generated/linkml_from_json \
+     --write-entrypoint \
+     --report generated/linkml_from_json/generation_report.json
+   ```
+   Relire les warnings du rapport avant de promouvoir les YAML générés dans `ontology/`.
+6. **Validation JSON ↔ LinkML** (obligatoire si des JSON ontologiques existent, sans écriture DB) :
    ```bash
    python3 ../scripts/validate_ontology_json_vs_linkml.py \
      --json-dir ontology \
-     --linkml-dir ontology \
+     --linkml-dir generated/linkml_from_json \
      --manifest ontology/manifest.json \
      --config ontology/<workspace>-contract.yaml \
      --output generated/<workspace_id>/reports/json_vs_linkml.validation.json \
      --markdown-output generated/<workspace_id>/reports/json_vs_linkml.validation.md
    ```
    `ok=false` bloque l'import si le rapport contient des `blocking` réels : classes manquantes, slots manquants, edges absents, enums non préservés, imports divergents. Les aliases validés dans le contrat ne sont pas des erreurs.
-6. **Validation dry-run LinkML** (obligatoire, sans écriture DB) :
+7. **Validation dry-run LinkML** (obligatoire, sans écriture DB) :
    ```bash
    gcp brain ontology compile \
      --workspace-id <workspace_id> \
@@ -512,9 +524,9 @@ Références optionnelles : [ghostcrab-personal-mcp `ontologies/immeuble-demo`](
      --input ontology/core.yaml \
      --output output/ontology-slice.json
    ```
-7. Corriger `core.yaml` jusqu'à exit 0 ; vérifier cohérence JTBD ↔ classes/enums/relations.
-8. Présenter le résumé ontologique à l'utilisateur et obtenir confirmation.
-9. **Import** :
+8. Corriger `core.yaml` jusqu'à exit 0 ; vérifier cohérence JTBD ↔ classes/enums/relations.
+9. Présenter le résumé ontologique à l'utilisateur et obtenir confirmation.
+10. **Import** :
    ```bash
    gcp brain ontology compile \
      --workspace-id <workspace_id> \
@@ -522,9 +534,9 @@ Références optionnelles : [ghostcrab-personal-mcp `ontologies/immeuble-demo`](
      --input ontology/core.yaml \
      --import-db --force
    ```
-10. Vérification post-import : `ghostcrab_ontology_list`, `ghostcrab_coverage`.
+11. Vérification post-import : `ghostcrab_ontology_list`, `ghostcrab_coverage`.
 
-**Multi-module :** exécuter le gate JSON ↔ LinkML une fois sur l'ensemble, puis répéter les étapes 6–10 par module avec `ontology_id: <workspace_id>::<module>`. Ordre de compile recommandé (catalogue Serenity V4) : `production` → `administrative` → `comptabilite` → `decisionnel` → `technique` → `missions` — voir `ghostcrab-shared/ENUM_BUSINESS_FACETS.md` pour la liste complète des enum facets par module. Enregistrer la liste dans `import_path_choices.yaml` → `artefacts.ontology_modules`.
+**Multi-module :** générer et valider l'ensemble une fois, puis répéter les étapes 7–11 par module avec `ontology_id: <workspace_id>::<module>`. Ordre de compile recommandé (catalogue Serenity V4) : `production` → `administrative` → `comptabilite` → `decisionnel` → `technique` → `missions` — voir `ghostcrab-shared/ENUM_BUSINESS_FACETS.md` pour la liste complète des enum facets par module. Enregistrer la liste dans `import_path_choices.yaml` → `artefacts.ontology_modules`.
 
 ### 6 bis.2a — Contrat central multi-ontologies
 

@@ -16,7 +16,7 @@
 | Phase A | Bootstrap SQLite + MCP | [SOP4](SOP4_environment_bootstrap.md) |
 | `ghostcrab_status` OK | Choix de voies d'import | [SOP0](SOP0_import_path_choices.md) + `../templates/import_path_choices.yaml` |
 | B0 done | Modéliser workspace | [SOP1](SOP1_ghostcrab_mcp.md) + [SOP2](SOP2_obsidian_ontologie.md) |
-| LinkML (SOP0) | Ontologie formelle | SOP2 §6 bis + `../templates/linkml_ontology.stub.yaml`; si multi-module/JSON : `ontology/<workspace>-contract.yaml` + `../scripts/validate_ontology_json_vs_linkml.py` |
+| LinkML (SOP0) | Ontologie formelle | SOP2 §6 bis + `../templates/linkml_ontology.stub.yaml`; si JSON source : `../scripts/generate_linkml_from_ontology_json.py`; si multi-module/JSON : `ontology/<workspace>-contract.yaml` + `../scripts/validate_ontology_json_vs_linkml.py` |
 | MCP incrémental (SOP0) | Seed unitaire | SOP2 §7 |
 | Phase B — specs OK | **Préparer projections** | [§ Route projections](#route-projections) + `../scripts/README_projection_tools.md` |
 | Projections validées | Matérialiser catalogue | `ghostcrab_project` + confirmation utilisateur |
@@ -260,7 +260,9 @@ document_path:
 | **Projections — auditer** | `audit_ghostcrab_projections.py` |
 | **Fake-data métier (B2)** | script Python projet + gates `profile_source` / `transform` |
 | Ontologie formelle | `gcp brain ontology compile` |
+| Génération JSON ontologique → LinkML | `generate_linkml_from_ontology_json.py` |
 | Gate JSON ontologique ↔ LinkML | `validate_ontology_json_vs_linkml.py` |
+| Analyse OpenAPI → mappingProfile | `analyze_openapi_for_mapping_profile.py` |
 | Documents bulk | `gcp brain document` (SOP6) |
 | Tabulaire bulk | `gcp brain structured-import` (SOP5) |
 | Audit agent | MCP search, pack, coverage |

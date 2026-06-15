@@ -52,3 +52,8 @@ Thumbs.db
 *.log
 .cursor/
 .codex/
+
+# Local workspace notes and archives
+process_done.md
+todo_next.md
+starter-kit-ghostcrab-perso.zip
