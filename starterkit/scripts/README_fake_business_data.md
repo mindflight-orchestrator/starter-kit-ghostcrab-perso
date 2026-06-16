@@ -14,7 +14,9 @@ Génère des **données fictives métier** alignées sur le contrat de modèle (
 | Vault Obsidian seul (SOP3/SOP6) | Optionnel — compléter avec tabulaire synthétique |
 | Production | **Non** — remplacer par sources réelles |
 
-Phase **B2** : après contrat ontologique (B) et catalogue projections (B1), **avant** `gcp brain structured-import` ou COPY (C2).
+Phase **B2** : après contrat ontologique (B), catalogue projections (B1), et **catalogue des règles métier (B1.5)**, **avant** `gcp brain structured-import` ou COPY (C2).
+
+Gate obligatoire : produire `rules/business_rules_catalog.yaml` avec [personal-mcp/SOP_business_rules_catalog.md](../personal-mcp/SOP_business_rules_catalog.md). Les fake-data doivent couvrir les règles et scénarios déclarés ; elles ne doivent pas deviner les cas critiques à la place du catalogue.
 
 **Facettes enum :** pour les domaines multi-modules, les valeurs générées et les clés de facettes dans `facets` JSON / CSV doivent respecter `<module>.<slot_snake_case>` — voir `ghostcrab-shared/ENUM_BUSINESS_FACETS.md` après `gcp brain setup`. Les clés ingest Obsidian courtes (`status`, `tags`) ne remplacent pas cette règle pour les enums LinkML.
 
@@ -26,6 +28,7 @@ Phase **B2** : après contrat ontologique (B) et catalogue projections (B1), **a
 |----------|------|
 | `../templates/jtbd.yaml` | volumes et familles métier |
 | `../templates/mvp_core_contract.yaml` ou export MCP | `schema_id`, enums, edges fermés |
+| `../templates/business_rules_catalog.yaml` ou `rules/business_rules_catalog.yaml` | règles métier, assertions et scénarios smoke/mini/scale |
 | `../templates/ontology_core_provisioning.yaml` | types et facettes obligatoires |
 | `../templates/mapping_external_to_canonical.yaml` | clés source → canonique |
 | Ontologie Markdown (optionnel) | sections `## Projections / rapports types` |
@@ -46,6 +49,8 @@ generated/<workspace_id>/
 ├── contracts/
 │   ├── projection_catalog.yaml      # optional — lié B1
 │   └── mapping_external_to_canonical.json
+├── rules/
+│   └── business_rules_catalog.yaml  # B1.5 — règles, assertions, scénarios
 └── import_manifest.yaml             # counts, paths, edition (runtime: generated/<ws>/import_manifest.yaml)
 ```
 
@@ -62,6 +67,7 @@ generated/<workspace_id>/
 4. **Graphe cohérent** — arêtes uniquement entre `source_ref` existants ; labels dans la liste fermée SOP2.
 5. **Volume minimal projections** — assez de lignes pour tester les scopes B1 retenus (ex. ≥3 lignes par projection « core »).
 6. **Idempotence** — seed fixe (`--seed 42`) pour reproductibilité CI.
+7. **Couverture règles métier** — chaque règle critique du catalogue a au moins un scénario smoke et un scénario mini normal ou exception.
 
 ---
 
@@ -100,10 +106,11 @@ Puis SOP5 : `gcp brain structured-import validate` → `apply` → `reindex`.
 
 Créer un script **projet-local** (hors starterkit) qui :
 
-1. Lit les Markdown d'ontologie + templates YAML.
+1. Lit les Markdown d'ontologie + templates YAML + `rules/business_rules_catalog.yaml`.
 2. Émet le contrat JSON et les CSV `fake_data/`.
 3. Produit `import_ready/facets_import.csv` + `edges_import.csv` au format structured-import.
 4. Valide enums / `schema_id` / ordre de dépendance avant écriture.
+5. Vérifie que les scénarios smoke/mini/scale du catalogue ont été matérialisés.
 
 Référence réelle : `MVP_Serenity_2/scripts/build_serenity_v3_ontology.py` (632 facts, 152 edges, `projection_catalog.json`).
 
@@ -114,10 +121,11 @@ Référence réelle : `MVP_Serenity_2/scripts/build_serenity_v3_ontology.py` (63
 Les fake-data **seules** ne matérialisent pas les projections. Enchaînement :
 
 1. B1 — catalogue / candidats validés  
-2. **B2 — fake data**  
-3. C2 — import  
-4. Matérialiser ou rafraîchir : `ghostcrab_project` (`analysis_plan`) + seed `live_answer_view` + `gcp brain artifact refresh`  
-5. `audit_ghostcrab_projections.py` + gate 7 SOP5  
+2. B1.5 — `rules/business_rules_catalog.yaml` confirmé
+3. **B2 — fake data**  
+4. C2 — import  
+5. Matérialiser ou rafraîchir : `ghostcrab_project` (`analysis_plan`) + seed `live_answer_view` + `gcp brain artifact refresh`  
+6. `audit_ghostcrab_projections.py` + gate 7 SOP5  
 
 Voir [README_projection_tools.md](README_projection_tools.md).
 

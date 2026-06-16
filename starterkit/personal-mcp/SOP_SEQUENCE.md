@@ -25,7 +25,7 @@
 
 ## How to use
 
-1. Phases **in order** (A → B0 → B → **B1** → **B2** → C / C2).
+1. Phases **in order** (A → B0 → B → **B1** → **B1.5** → **B2** → C / C2).
 2. Load **only** files in this folder + `../templates/` + `../scripts/`.
 3. `edition: personal-mcp` in `../templates/import_manifest.yaml`.
 4. Match each phase to GhostCrab skills via [SKILL_ROUTE_MAP.md](SKILL_ROUTE_MAP.md) (`gcp brain setup cursor|claude|codex|generic` for install).
@@ -36,11 +36,12 @@ flowchart LR
   B0[Phase B0 SOP0]
   B[Phase B SOP1+SOP2]
   B1[Phase B1 projections]
+  B15[Phase B1.5 business rules]
   B2[Phase B2 fake-data]
   C3[Phase C opt SOP3]
   C6[Phase C SOP6]
   C2[Phase C2 SOP5]
-  A --> B0 --> B --> B1 --> B2
+  A --> B0 --> B --> B1 --> B15 --> B2
   B2 --> C3 --> C6
   B2 --> C6
   B2 --> C2
@@ -82,6 +83,16 @@ flowchart LR
 | B1 prep | [ROUTE_MAP § projections](ROUTE_MAP.md#route-projections), [../scripts/README_projection_tools.md](../scripts/README_projection_tools.md) | `projection_model_validation.md` reviewed — `artifact_kind` + `proj_type` confirmed |
 | B1 write | SOP2 §7.6–7.7, `ghostcrab_project` | `analysis_plan` scopes declared; optional `live_answer_view` seed |
 | B1 audit (post-import) | `audit_ghostcrab_projections.py`, SOP5 gate 7 | pack + projection_get smoke OK; refresh stale `live_answer_view` if seeded |
+
+---
+
+## Phase B1.5 — Business rules catalog
+
+| Step | Document / tool | Done when |
+|------|-------------------|-----------|
+| B1.5 | [SOP_business_rules_catalog.md](SOP_business_rules_catalog.md), [../templates/business_rules_catalog.yaml](../templates/business_rules_catalog.yaml) | `rules/business_rules_catalog.yaml` confirmed; critical rules linked to ontology refs, assertions, and smoke/mini/scale scenarios |
+
+Do not start B2 fake-data generation until this catalog exists or the absence of business rules is explicitly documented in `import_path_choices.yaml`.
 
 ---
 
@@ -135,6 +146,7 @@ Skip B2 only when real tabular sources are already validated (document in `impor
 | SOP0 | [SOP0_import_path_choices.md](SOP0_import_path_choices.md) | B0 |
 | SOP1 | [SOP1_ghostcrab_mcp.md](SOP1_ghostcrab_mcp.md) | B |
 | SOP2 | [SOP2_obsidian_ontologie.md](SOP2_obsidian_ontologie.md) | B |
+| Business rules | [SOP_business_rules_catalog.md](SOP_business_rules_catalog.md) | B1.5 |
 | SOP3 | [SOP3_parsing_pipeline.md](SOP3_parsing_pipeline.md) | C (opt.) |
 | SOP4 | [SOP4_environment_bootstrap.md](SOP4_environment_bootstrap.md) | A |
 | SOP5 | [SOP5_structured_import.md](SOP5_structured_import.md) | C2 |

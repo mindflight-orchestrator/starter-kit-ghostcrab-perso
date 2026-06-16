@@ -52,3 +52,18 @@ The central contract is both a human design artifact and the validator config. I
 - `aliases` and `checks` sections consumed by the script.
 
 Blocking issues must be resolved before import. Accepted aliases recorded in the contract are not blocking mismatches.
+
+After native LinkML import, run the GhostCrab schema activation generator. Ontology import alone is not enough for MCP agents, import gates, and enum facet validation:
+
+```bash
+python3 starterkit/scripts/generate_ghostcrab_schemas_from_linkml.py \
+  --linkml-dir generated/linkml_from_json \
+  --workspace-id <workspace> \
+  --output-dir generated/<workspace>/ghostcrab_schema_activation
+```
+
+Review `activation_plan.md`, then apply:
+
+1. `schema_register_payloads.jsonl` with `ghostcrab_schema_register`;
+2. `facet_register_payloads.jsonl` with `ghostcrab_facet_register`;
+3. read tests with `ghostcrab_schema_list` and representative `ghostcrab_facet_inspect`.

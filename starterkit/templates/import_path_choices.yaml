@@ -30,6 +30,16 @@ document_path:
   confirmed_at: null
   notes: ""
 
+# Phase B1.5 — business rules catalog (before fake-data)
+business_rules_catalog:
+  # create | skip_with_reason
+  choice: "create"
+  confirmed_at: null
+  notes: ""
+  template: "{starterkit}/templates/business_rules_catalog.yaml"
+  output_path: "rules/business_rules_catalog.yaml"
+  generated_output_path: "generated/<workspace_id>/rules/business_rules_catalog.yaml"
+
 # Phase B2 — fake business data (before first bulk import if no real source yet)
 fake_data:
   # generate | skip (real sources already validated)
@@ -50,6 +60,12 @@ artefacts:
   ontology_validation_script: "{starterkit}/scripts/validate_ontology_json_vs_linkml.py"
   generated_linkml_dir: "generated/linkml_from_json"
   ontology_compile_slice: "output/ontology-slice.json"
+  # Mandatory after LinkML native import: generate MCP payloads, then apply
+  # ghostcrab_schema_register + ghostcrab_facet_register.
+  schema_activation_required: true
+  schema_activation_script: "{starterkit}/scripts/generate_ghostcrab_schemas_from_linkml.py"
+  schema_activation_dir: "generated/<workspace_id>/ghostcrab_schema_activation"
+  business_rules_catalog: "rules/business_rules_catalog.yaml"
   # Template source: {starterkit}/templates/import_manifest.yaml
   # Runtime copy (gate 9): {project}/generated/<workspace_id>/import_manifest.yaml
   import_manifest: "templates/import_manifest.yaml"

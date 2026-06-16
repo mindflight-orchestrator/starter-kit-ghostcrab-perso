@@ -56,17 +56,18 @@ Shared contracts install alongside skills under `ghostcrab-shared/` (e.g. `ONBOA
 |-----------|------------------|----------------------|----------------|
 | **A** Bootstrap | — | `gcp smoke`, `gcp brain up`, `ghostcrab_status` | `ghostcrab-gap-auditor` (no data to audit) |
 | **B0** Import choices | `ghostcrab-data-architect` | [../templates/import_path_choices.yaml](../templates/import_path_choices.yaml) | `ghostcrab-json-answer-builder` |
-| **B** Modeling | `ghostcrab-data-architect` | `ghostcrab_ontology_import`, `ghostcrab_schema_register` (`target=facets`), `gcp brain ontology compile`, `generate_linkml_from_ontology_json.py` when JSON is source, `validate_ontology_json_vs_linkml.py` when JSON + LinkML coexist, `analyze_openapi_for_mapping_profile.py` when OpenAPI is source — enum facets `<module>.<slot>` per `ghostcrab-shared/ENUM_BUSINESS_FACETS.md` | `ghostcrab-projection-reviewer` |
+| **B** Modeling | `ghostcrab-data-architect` | `ghostcrab_ontology_import`, `gcp brain ontology compile`, `generate_linkml_from_ontology_json.py` when JSON is source, `validate_ontology_json_vs_linkml.py` when JSON + LinkML coexist, `generate_ghostcrab_schemas_from_linkml.py` after LinkML import, `ghostcrab_schema_register`, `ghostcrab_facet_register`, `analyze_openapi_for_mapping_profile.py` when OpenAPI is source — enum facets `<module>.<slot>` per `ghostcrab-shared/ENUM_BUSINESS_FACETS.md` | `ghostcrab-projection-reviewer` |
 | **B-fix** Convergence | `ghostcrab-gap-auditor` | `ghostcrab_graph_diagnostics`, project remediation scripts | `ghostcrab-projection-reviewer` |
 | **B1** Prepare | `ghostcrab-data-architect`, `ghostcrab-projection-reviewer` | [../scripts/analyze_projection_candidates.py](../scripts/analyze_projection_candidates.py) | `ghostcrab_project` (before human gate) |
 | **B1** Freeze | `ghostcrab-projection-reviewer` | — | any MCP write |
-| **B2** Fake data | `ghostcrab-data-architect` | StarterKit gates 2–4 scripts ([SOP5](SOP5_structured_import.md)) | `ghostcrab-operator` (no business data yet) |
+| **B1.5** Business rules | `ghostcrab-data-architect` | [SOP_business_rules_catalog.md](SOP_business_rules_catalog.md), [../templates/business_rules_catalog.yaml](../templates/business_rules_catalog.yaml) | B2 fake-data generation |
+| **B2** Fake data | `ghostcrab-data-architect` | StarterKit gates 2–4 scripts ([SOP5](SOP5_structured_import.md)) + `rules/business_rules_catalog.yaml` coverage | `ghostcrab-operator` (no business data yet) |
 | **C2** Import | — | `gcp brain structured-import` validate → apply → reindex | — |
 | **B1** Materialize | `ghostcrab-projection-reviewer` | `ghostcrab_project`, artifact seed/refresh | — |
 | **Post-import** Refresh | — | `gcp brain artifact refresh` | — |
 | **Audit** | `ghostcrab-gap-auditor` | [../scripts/audit_ghostcrab_projections.py](../scripts/audit_ghostcrab_projections.py) | — |
 | **Runtime** Q&A | `ghostcrab-operator` → `ghostcrab-evidence-discovery` → `ghostcrab-json-answer-builder` | `ghostcrab_pack`, `ghostcrab_search`, `ghostcrab_projection_get` | `ghostcrab-data-architect` |
-| **Runtime** Unanswerable | `ghostcrab-gap-auditor` | routes back to B-fix / B2 / B1 materialize | — |
+| **Runtime** Unanswerable | `ghostcrab-gap-auditor` | routes back to B-fix / B1.5 / B2 / B1 materialize | — |
 | **Ongoing** Checkpoints | `ghostcrab-memory` | `ghostcrab_remember` at phase boundaries | — |
 | **Fuzzy** intent | `ghostcrab-prompt-guide` | intake only (2–4 questions) | all MCP writes |
 
@@ -84,7 +85,7 @@ flowchart LR
   REV --> ANS{Evidence sufficient?}
   ANS -->|Yes| JSON[ghostcrab-json-answer-builder]
   ANS -->|No| GAP[ghostcrab-gap-auditor]
-  GAP --> FIX[Back to B-fix / B2 / B1]
+  GAP --> FIX[Back to B-fix / B1.5 / B2 / B1]
 ```
 
 ---
@@ -148,6 +149,8 @@ artefacts:
 ```
 
 Multi-module domains: register enum facets with `<module>.<slot_snake_case>` — see `ghostcrab-shared/ENUM_BUSINESS_FACETS.md` after `gcp brain setup`.
+
+**LinkML done rule:** do not route out of Phase B after native ontology import alone. Generate and apply GhostCrab schema/facet activation payloads, then run read tests.
 
 ---
 

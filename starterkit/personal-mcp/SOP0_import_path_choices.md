@@ -62,17 +62,23 @@ Optional single-module reference: [ghostcrab-personal-mcp `ontologies/immeuble-d
 ## Agent prompt (FR) — fake-data métier (B2)
 
 ```
-Avant le premier import bulk tabulaire (SOP5), souhaitez-vous :
+Avant le premier import bulk tabulaire (SOP5), le gate B1.5 doit produire
+rules/business_rules_catalog.yaml selon SOP_business_rules_catalog.md.
+
+Ensuite, souhaitez-vous :
 
 1. Générer des données fictives métier (recommandé sans source CRM/API)
+   — couvre les règles, assertions et scénarios smoke/mini/scale du catalogue
    — ../scripts/README_fake_business_data.md + ROUTE_MAP § B2
 
 2. Passer B2 (sources réelles déjà profilées et mappées)
+   — documenter pourquoi le catalogue n'est pas nécessaire ou comment les sources réelles couvrent les règles
 
 Choix ? (1 ou 2)
 ```
 
 Enregistrer dans `import_path_choices.yaml` → `fake_data.choice`: `generate` | `skip`.
+Enregistrer aussi `business_rules_catalog.choice`: `create` | `skip_with_reason`.
 
 ---
 

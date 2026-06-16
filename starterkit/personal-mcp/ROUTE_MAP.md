@@ -16,11 +16,12 @@
 | Phase A | Bootstrap SQLite + MCP | [SOP4](SOP4_environment_bootstrap.md) |
 | `ghostcrab_status` OK | Choix de voies d'import | [SOP0](SOP0_import_path_choices.md) + `../templates/import_path_choices.yaml` |
 | B0 done | Modéliser workspace | [SOP1](SOP1_ghostcrab_mcp.md) + [SOP2](SOP2_obsidian_ontologie.md) |
-| LinkML (SOP0) | Ontologie formelle | SOP2 §6 bis + `../templates/linkml_ontology.stub.yaml`; si JSON source : `../scripts/generate_linkml_from_ontology_json.py`; si multi-module/JSON : `ontology/<workspace>-contract.yaml` + `../scripts/validate_ontology_json_vs_linkml.py` |
+| LinkML (SOP0) | Ontologie formelle + activation GhostCrab | SOP2 §6 bis + `../templates/linkml_ontology.stub.yaml`; si JSON source : `../scripts/generate_linkml_from_ontology_json.py`; si multi-module/JSON : `ontology/<workspace>-contract.yaml` + `../scripts/validate_ontology_json_vs_linkml.py`; après import : `../scripts/generate_ghostcrab_schemas_from_linkml.py` |
 | MCP incrémental (SOP0) | Seed unitaire | SOP2 §7 |
 | Phase B — specs OK | **Préparer projections** | [§ Route projections](#route-projections) + `../scripts/README_projection_tools.md` |
 | Projections validées | Matérialiser catalogue | `ghostcrab_project` + confirmation utilisateur |
-| Phase B1 done | **Générer fake-data métier** | [§ Données fictives B2](#route-donnees-fictives-metier) + `../scripts/README_fake_business_data.md` |
+| Phase B1 done | **Cataloguer les règles métier** | [SOP business rules](SOP_business_rules_catalog.md) + `../templates/business_rules_catalog.yaml` |
+| Phase B1.5 done | **Générer fake-data métier** | [§ Données fictives B2](#route-donnees-fictives-metier) + `../scripts/README_fake_business_data.md` |
 | Fake-data prêtes | Import structured-import | [SOP5](SOP5_structured_import.md) gates 0–6 |
 | Phase B done | Vault Obsidian à parser | [SOP3](SOP3_parsing_pipeline.md) |
 | Corpus documents | Bulk `gcp brain document` | [SOP6](SOP6_gcp_document_import.md) |
@@ -36,7 +37,8 @@ flowchart LR
   SOP4[Phase A SOP4] --> SOP0[Phase B0 SOP0]
   SOP0 --> SOP1B[Phase B SOP1+SOP2]
   SOP1B --> SOP1proj[Phase B1 projections]
-  SOP1proj --> SOP2fake[Phase B2 fake-data]
+  SOP1proj --> SOP15rules[Phase B1.5 business rules]
+  SOP15rules --> SOP2fake[Phase B2 fake-data]
   SOP2fake --> SOP5C2[Phase C2 SOP5 import]
   SOP2fake --> SOP3[Phase C opt SOP3]
   SOP1B --> SOP6[Phase C SOP6]
@@ -47,13 +49,16 @@ flowchart LR
 |-------|-----|-----------|-----------|
 | A | SOP4 | `gcp smoke`, `gcp brain up`, `ghostcrab_status` | SQLite OK, outils MCP visibles |
 | B0 | SOP0 | `import_path_choices.yaml` | choix enregistrés |
-| B | SOP1 + SOP2 | MCP + LinkML ou incrémental | contrat central/gate JSON ↔ LinkML si applicable, puis `ghostcrab_coverage` baseline |
+| B | SOP1 + SOP2 | MCP + LinkML ou incrémental | contrat central/gate JSON ↔ LinkML si applicable, import natif, activation schemas/facets, puis read tests |
 | **B1** | scripts projections | candidats + validation humaine | catalogue déclaré prêt |
+| **B1.5** | [SOP business rules](SOP_business_rules_catalog.md) | `rules/business_rules_catalog.yaml` | règles critiques reliées aux ontologies, assertions et scénarios smoke/mini/scale |
 | **B2** | fake-data métier | CSV `import_ready/` + manifest | gates 2–4 dry-run OK |
 | C (opt.) | SOP3 | parsing vault → JSONB | validator OK |
 | C | SOP6 | `gcp brain document` | pipeline document OK |
 | C2 | SOP5 | `gcp brain structured-import` | facets + reindex |
 | Audit | SOP5 gates 8–9 | MCP pack + `audit_ghostcrab_projections.py` | manifest + consumers |
+
+**Gate LinkML obligatoire :** `gcp brain ontology compile --import-db` n'est pas une fin de phase. La phase B est terminée seulement quand les 4 feux sont verts : ontologies importées, schémas GhostCrab enregistrés, facettes enum enregistrées, read tests passés.
 
 ---
 
@@ -173,6 +178,8 @@ Génération **déterministe** de lignes métier pour valider modèle, import et
 
 **Doc:** [../scripts/README_fake_business_data.md](../scripts/README_fake_business_data.md)
 
+**Gate B1.5 obligatoire :** produire et confirmer `rules/business_rules_catalog.yaml` avec [SOP_business_rules_catalog.md](SOP_business_rules_catalog.md) avant B2. Les fake-data couvrent les règles et scénarios déclarés ; elles ne doivent pas inventer les cas métier critiques.
+
 ### Objectif
 
 Produire des faits et arêtes **schema-valid** suffisants pour :
@@ -185,6 +192,7 @@ Produire des faits et arêtes **schema-valid** suffisants pour :
 
 ```text
 Contrat B (model_contract.json)
+  → rules/business_rules_catalog.yaml
   → script Python projet-local OU CSV manuels alignés mapping
   → generated/<ws>/fake_data/*.csv
   → generated/<ws>/import_ready/facets_import.csv + edges_import.csv
@@ -220,6 +228,7 @@ gcp brain structured-import reindex --workspace-id <ws> --scope all
 
 - **Même SQLite** que `ghostcrab_status` (`GHOSTCRAB_SQLITE_PATH`).
 - **Qualité enum** — fake-data incohérentes ⇒ projections « calculables » mais métier faux.
+- **Règles implicites** — si `business_rules_catalog.yaml` manque, les cas impayés, paiements partiels, votes, quotités ou exceptions seront probablement oubliés.
 - **Import ≠ projections** — après apply, exécuter matérialisation B1.
 
 **Done when :** `generated/<ws>/import_manifest.yaml` rempli ; `ghostcrab_count` > 0 sur schémas core ; gate 7 projections smoke OK.
@@ -305,6 +314,7 @@ Clôture : `../templates/import_manifest.yaml` (`edition: personal-mcp`).
 | SOP0 | [SOP0_import_path_choices.md](SOP0_import_path_choices.md) | B0 |
 | SOP1 | [SOP1_ghostcrab_mcp.md](SOP1_ghostcrab_mcp.md) | B |
 | SOP2 | [SOP2_obsidian_ontologie.md](SOP2_obsidian_ontologie.md) | B |
+| Business rules | [SOP_business_rules_catalog.md](SOP_business_rules_catalog.md) | B1.5 |
 | SOP3 | [SOP3_parsing_pipeline.md](SOP3_parsing_pipeline.md) | C (opt.) |
 | SOP4 | [SOP4_environment_bootstrap.md](SOP4_environment_bootstrap.md) | A |
 | SOP5 | [SOP5_structured_import.md](SOP5_structured_import.md) | C2 |

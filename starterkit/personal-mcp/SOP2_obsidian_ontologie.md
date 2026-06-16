@@ -25,6 +25,7 @@ Les tableaux ci-dessous utilisent les noms logiques (`schema_id`, `content`, `fa
 - Le choix de voie d'import ontologique (voir `SOP0_import_path_choices.md` : LinkML défaut vs MCP incrémental).
 - L'analyse d'un vault Obsidian (`.md` + `.pdf`) pour en extraire le matériel ontologique.
 - La formalisation des JTBD du vault en ontologies candidates.
+- La préparation du point de passage vers le catalogue des règles métier.
 - La stratégie de parsing, de chunking et d'enrichissement LLM.
 - La production du JSONB intermédiaire structuré.
 - La séquence d'injection dans GhostCrab MCP (schémas, facettes, graphe, projections).
@@ -477,9 +478,12 @@ Cette voie enregistre l'ontologie comme artefact LinkML versionné, compilé et 
 | `ontology/core.yaml` | Ontologie domaine mono-module (défaut) |
 | `ontology/<module>.yaml` | Ontologie multi-modules (un fichier par module LinkML) |
 | `ontology/<workspace>-contract.yaml` | Contrat central multi-ontologies : nommage public/interne, aliases, imports, ordre d'import, mappingProfile, gates |
+| `rules/business_rules_catalog.yaml` | Contrat B1.5 des règles métier, calculs, transitions, exceptions et scénarios avant fake-data |
 | `../scripts/generate_linkml_from_ontology_json.py` | Générateur JSON ontologique → YAML LinkML, à utiliser si les JSON existent déjà |
 | `../scripts/validate_ontology_json_vs_linkml.py` | Gate read-only JSON ontologique ↔ LinkML avant import |
+| `../scripts/generate_ghostcrab_schemas_from_linkml.py` | Générateur LinkML → payloads MCP `ghostcrab_schema_register` / `ghostcrab_facet_register` |
 | `output/ontology-slice.json` | Sortie dry-run compile (inspection) |
+| `generated/<workspace_id>/ghostcrab_schema_activation/` | Payloads et plan d'activation GhostCrab post-import |
 
 Références optionnelles : [ghostcrab-personal-mcp `ontologies/immeuble-demo`](https://github.com/mindflight-orchestrator/ghostcrab-personal-mcp/tree/main/ontologies/immeuble-demo) (mono-module).
 
@@ -534,9 +538,20 @@ Références optionnelles : [ghostcrab-personal-mcp `ontologies/immeuble-demo`](
      --input ontology/core.yaml \
      --import-db --force
    ```
-11. Vérification post-import : `ghostcrab_ontology_list`, `ghostcrab_coverage`.
+11. Générer les payloads d'activation GhostCrab (schémas + facettes) :
+   ```bash
+   python3 ../scripts/generate_ghostcrab_schemas_from_linkml.py \
+     --linkml-dir generated/linkml_from_json \
+     --workspace-id <workspace_id> \
+     --output-dir generated/<workspace_id>/ghostcrab_schema_activation
+   ```
+12. Appliquer les payloads après revue humaine :
+   - `schema_register_payloads.jsonl` → `ghostcrab_schema_register`
+   - `facet_register_payloads.jsonl` → `ghostcrab_facet_register`
+13. Vérification post-import et post-activation : `ghostcrab_ontology_list`, `ghostcrab_coverage`, `ghostcrab_schema_list`, `ghostcrab_facet_inspect`.
+14. Avant de générer des fake-data, passer par [SOP_business_rules_catalog.md](SOP_business_rules_catalog.md) et produire `rules/business_rules_catalog.yaml`. LinkML valide le vocabulaire ; le catalogue de règles valide les comportements métier à tester.
 
-**Multi-module :** générer et valider l'ensemble une fois, puis répéter les étapes 7–11 par module avec `ontology_id: <workspace_id>::<module>`. Ordre de compile recommandé (catalogue Serenity V4) : `production` → `administrative` → `comptabilite` → `decisionnel` → `technique` → `missions` — voir `ghostcrab-shared/ENUM_BUSINESS_FACETS.md` pour la liste complète des enum facets par module. Enregistrer la liste dans `import_path_choices.yaml` → `artefacts.ontology_modules`.
+**Multi-module :** générer et valider l'ensemble une fois, puis répéter les étapes 7–10 par module avec `ontology_id: <workspace_id>::<module>`, puis lancer une seule activation GhostCrab globale (étapes 11–13). Ordre de compile recommandé (catalogue Serenity V4) : `production` → `administrative` → `comptabilite` → `decisionnel` → `technique` → `missions` — voir `ghostcrab-shared/ENUM_BUSINESS_FACETS.md` pour la liste complète des enum facets par module. Enregistrer la liste dans `import_path_choices.yaml` → `artefacts.ontology_modules`.
 
 ### 6 bis.2a — Contrat central multi-ontologies
 
@@ -579,27 +594,65 @@ checks:
 
 Ce fichier est à la fois un contrat humain et la configuration du validateur. Les noms clients restent stables ; les rôles internes servent seulement à désambiguïser les couches techniques.
 
-### 6 bis.2b — Enum facet layer (LinkML → MCP)
+### 6 bis.3 — Activation GhostCrab obligatoire (LinkML → MCP)
 
-Après import LinkML par module, enregistrer la **couche enum métier** (automatiquement — ne pas attendre que l'utilisateur demande le préfixage).
+Ne jamais considérer un workspace prêt après le seul import LinkML natif. L'import natif renseigne les tables `ontology_*`; l'activation GhostCrab renseigne les registres MCP que les agents, les imports structurés, les facettes et les tests de retrieval savent lire.
 
-**Règle obligatoire :** `<module>.<slot_snake_case>` (ex. `administrative.formule_service`, `comptabilite.statut_exercice`).
+**Definition of done LinkML :**
+
+| Feu vert | Condition |
+|----------|-----------|
+| Ontologies | `ghostcrab_ontology_import` ou `gcp brain ontology compile --import-db` exécuté par module |
+| Schémas | `ghostcrab_schema_register` appliqué depuis `schema_register_payloads.jsonl` |
+| Facettes | `ghostcrab_facet_register` appliqué depuis `facet_register_payloads.jsonl` |
+| Read tests | `ghostcrab_schema_list`, `ghostcrab_facet_inspect`, puis smoke `ghostcrab_search` / `ghostcrab_pack` quand des données existent |
+
+**Règle enum obligatoire :** `<module>.<slot_snake_case>` (ex. `administrative.formule_service`, `comptabilite.statut_exercice`).
 
 | Famille | Exemples de clés | Doc |
 |---------|------------------|-----|
 | Ingest Obsidian (tags, frontmatter) | `status`, `tags`, `priority` dans `agent_facts.facets` | Vocabulaire ingest — pas de préfixe module requis |
 | Enums LinkML / domaine | `production.statut_copropriete`, `missions.statut_mission` | Installé : `ghostcrab-shared/ENUM_BUSINESS_FACETS.md` |
 
+Générer le plan d'activation :
+
+```bash
+python3 ../scripts/generate_ghostcrab_schemas_from_linkml.py \
+  --linkml-dir generated/linkml_from_json \
+  --workspace-id <workspace_id> \
+  --output-dir generated/<workspace_id>/ghostcrab_schema_activation
+```
+
+Le script produit :
+
+- `schema_register_payloads.jsonl` : `target: facets`, `graph_node`, `graph_edge`
+- `facet_register_payloads.jsonl` : une entrée par facette enum métier
+- `summary.json` : compteurs par module
+- `activation_plan.md` : ordre d'application et tests de lecture
+
 Workflow MCP (après confirmation utilisateur) :
 
-1. `ghostcrab_ontology_import` (ou `gcp brain ontology compile --import-db`) par module
-2. `ghostcrab_schema_register` avec `target: "facets"`, `schema_id: "<workspace_id>:<module>"`, corps avec `facet_keys` + `enum_facets`
-3. `ghostcrab_facet_register` pour chaque clé enum
-4. Valider : `ghostcrab_facet_inspect("<module>.<slot>")`, `ghostcrab_schema_list(domain="<workspace_id>", target="facets")`
+1. Lire `activation_plan.md` et vérifier les compteurs.
+2. Appliquer `schema_register_payloads.jsonl` via `ghostcrab_schema_register`.
+3. Appliquer `facet_register_payloads.jsonl` via `ghostcrab_facet_register`.
+4. Valider : `ghostcrab_schema_list(domain="<workspace_id>", target="facets")`, `ghostcrab_facet_inspect("<module>.<slot>")`.
 
-`ghostcrab_workspace_inspect` vide **avant structured-import** n'est pas une erreur.
+`ghostcrab_workspace_inspect` vide **avant structured-import** n'est pas une erreur. En revanche, un workspace avec ontologies importées mais sans schémas/facettes GhostCrab activés n'est pas prêt.
 
-### 6 bis.3 Variante avancée (non défaut)
+### 6 bis.3a — Gate B1.5 : règles métier avant fake-data
+
+Après activation GhostCrab et préparation des projections, produire `rules/business_rules_catalog.yaml` selon [SOP_business_rules_catalog.md](SOP_business_rules_catalog.md).
+
+Ce gate évite la confusion entre :
+
+- **Ontologie** : objets, slots, enums, arêtes.
+- **Schémas/facettes GhostCrab** : visibilité MCP et validation d'import.
+- **Gap rules** : contraintes structurelles du graphe.
+- **Business rules** : calculs, obligations, transitions, exceptions, cas impayés, votes, quotités, missions/interventions, mappings API.
+
+Le passage vers B2 est autorisé seulement quand les règles critiques référencent les classes/slots/arêtes LinkML, déclarent leurs assertions et listent les scénarios `smoke`, `mini` et `scale` à générer.
+
+### 6 bis.4 Variante avancée (non défaut)
 
 OWL/N-Triples normalisés :
 
@@ -611,7 +664,7 @@ gcp brain ontology import \
   --materialize-graph
 ```
 
-### 6 bis.4 Alternative historique
+### 6 bis.5 Alternative historique
 
 Pour l'enregistrement progressif via MCP (`ghostcrab_schema_register`, `remember`, `upsert`, `learn`), voir **section 7 — Voie MCP incrémentale**.
 
@@ -653,7 +706,7 @@ Pour l'enregistrement progressif via MCP (`ghostcrab_schema_register`, `remember
 
 Un appel par ontologie candidate. L'ordre suit la dépendance (les pivots en premier).
 
-> **Facet keys dans cette voie :** les clés ci-dessous sont **ingest / entité** (Obsidian frontmatter, pas enums LinkML). Pour les enums métier après LinkML, utiliser la voie 6 bis.2b et `<module>.<slot_snake_case>` (`ghostcrab-shared/ENUM_BUSINESS_FACETS.md`). Pour l'ingest documentaire, voir `ghostcrab-shared/PATH_CONTENT_FACETS.md`.
+> **Facet keys dans cette voie :** les clés ci-dessous sont **ingest / entité** (Obsidian frontmatter, pas enums LinkML). Pour les enums métier après LinkML, utiliser la voie 6 bis.3 et `<module>.<slot_snake_case>` (`ghostcrab-shared/ENUM_BUSINESS_FACETS.md`). Pour l'ingest documentaire, voir `ghostcrab-shared/PATH_CONTENT_FACETS.md`.
 
 ```json
 // ghostcrab_schema_register — exemple décision (ingest / entité, pas enum LinkML)
@@ -668,7 +721,7 @@ Un appel par ontologie candidate. L'ordre suit la dépendance (les pivots en pre
 }
 ```
 
-Exemple **enum facet LinkML** (voie 6 bis.2b, pas cette étape MCP incrémentale) :
+Exemple **enum facet LinkML** (voie 6 bis.3, pas cette étape MCP incrémentale) :
 
 ```json
 // ghostcrab_schema_register — target: "facets", schema_id: "<workspace_id>:<module>"

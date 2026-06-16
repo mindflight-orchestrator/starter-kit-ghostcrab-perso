@@ -15,7 +15,9 @@ Compile external tabular sources into validated GhostCrab Personal records witho
 
 Prerequisite: Phase B0 — `structured_import_cli` in `../templates/import_path_choices.yaml`.
 
-**Phase B2 (recommended):** generate deterministic fake business rows before first bulk apply — [../scripts/README_fake_business_data.md](../scripts/README_fake_business_data.md), [ROUTE_MAP § B2](ROUTE_MAP.md#route-donnees-fictives-metier). Skip only if real sources are already profiled and mapped.
+**Phase B1.5 (mandatory before fake-data):** confirm `rules/business_rules_catalog.yaml` with [SOP_business_rules_catalog.md](SOP_business_rules_catalog.md). This catalog defines the rules, assertions, and smoke/mini/scale scenarios that B2 must cover.
+
+**Phase B2 (recommended):** generate deterministic fake business rows before first bulk apply — [../scripts/README_fake_business_data.md](../scripts/README_fake_business_data.md), [ROUTE_MAP § B2](ROUTE_MAP.md#route-donnees-fictives-metier). Skip only if real sources are already profiled and mapped and the B1.5 decision records how they cover business rules.
 
 **Path resolution:** [STARTERKIT_PATHS.md](STARTERKIT_PATHS.md) — agents: `GHOSTCRAB_STARTERKIT_ROOT` or `.ghostcrab/starterkit-root`; CLI: `GCP_STARTERKIT_ROOT`, `--starterkit-root`, or `paths.starterkit_root` in `import_path_choices.yaml`.
 

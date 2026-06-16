@@ -14,6 +14,7 @@ Examples:
 ```text
 {starterkit}/personal-mcp/SOP_SEQUENCE.md
 {starterkit}/templates/linkml_ontology.stub.yaml
+{starterkit}/templates/business_rules_catalog.yaml
 {project}/ontology/production.yaml
 ```
 
@@ -47,6 +48,7 @@ git clone git@github.com:mindflight-orchestrator/starter-kit-ghostcrab-perso.git
 | Path resolution (this file) | `{starterkit}/personal-mcp/STARTERKIT_PATHS.md` |
 | SOP0 import choices | `{starterkit}/personal-mcp/SOP0_import_path_choices.md` |
 | SOP2 ontology | `{starterkit}/personal-mcp/SOP2_obsidian_ontologie.md` |
+| Business rules SOP | `{starterkit}/personal-mcp/SOP_business_rules_catalog.md` |
 | SOP5 tabular import | `{starterkit}/personal-mcp/SOP5_structured_import.md` |
 | Templates | `{starterkit}/templates/*` |
 | Gate scripts | `{starterkit}/scripts/*` |

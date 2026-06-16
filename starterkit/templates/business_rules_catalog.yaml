@@ -1,0 +1,164 @@
+# business_rules_catalog.yaml
+# Copier vers rules/business_rules_catalog.yaml dans le projet, ou vers
+# generated/<workspace_id>/rules/business_rules_catalog.yaml pour les artefacts generes.
+
+workspace_id: "<workspace_id>"
+edition: "personal-mcp"
+catalog_kind: "business_rules_catalog"
+version: "0.1.0"
+status: "draft" # draft | confirmed
+
+principles:
+  first_principles:
+    - "L'ontologie nomme le vocabulaire."
+    - "LinkML rend le vocabulaire importable."
+    - "Les schemas et facettes GhostCrab rendent le vocabulaire utilisable par les agents et les gates d'import."
+    - "Les regles metier definissent ce qui doit etre vrai, calcule, declenche, interdit ou explicable."
+  mece_families:
+    - structural
+    - business
+    - workflow
+    - mapping
+    - scenario
+    - projection
+
+source_documents:
+  - path: "<relative/path/to/domain_doc.md>"
+    role: "domain_rules_source"
+    status: "reviewed" # draft | reviewed
+
+ontology_context:
+  contract_path: "ontology/<workspace_id>-contract.yaml"
+  linkml_dirs:
+    - "ontology/"
+    - "generated/linkml_from_json/"
+  expected_modules:
+    - production
+    - administrative
+    - comptabilite
+    - decisionnel
+    - technique
+    - missions
+
+coverage_policy:
+  require_critical_rules_have_assertions: true
+  require_critical_rules_have_smoke_scenarios: true
+  require_exception_cases_for_financial_rules: true
+  require_mapping_profile_for_external_generic_api: true
+
+rule_families:
+  structural:
+    description: "Relations graphe obligatoires, cardinalites, topologies impossibles."
+    output: "candidate gap_rules"
+  business:
+    description: "Montants, obligations, eligibilite, echeances, effets de decision."
+    output: "assertions fake-data et preuves de projection"
+  workflow:
+    description: "Transitions d'etat, declencheurs, etapes de cycle de vie."
+    output: "scenarios et tests de cycle de vie"
+  mapping:
+    description: "Champs API generiques externes relies au sens metier canonique."
+    output: "regles mappingProfile"
+  scenario:
+    description: "Cas smoke/mini/scale a generer."
+    output: "plan de volume fake-data"
+  projection:
+    description: "Questions metier auxquelles les agents doivent repondre avec preuves."
+    output: "projection catalog / answer artifacts"
+
+rules:
+  - rule_id: "example_ag_vote_budget_travaux_repartition_quotites"
+    family: "business"
+    criticality: "critical" # critical | important | optional
+    status: "draft" # draft | confirmed | deferred
+    title: "AG vote un budget travaux et repartit les appels selon les quotites"
+    job_to_be_done: >
+      Quand une assemblee generale vote un budget travaux, MindBrain doit expliquer
+      quels coproprietaires doivent quels montants selon leurs quotites.
+    actor: "syndic"
+    trigger: "decision_ag_votee"
+    outcome: "appels_de_fonds_generes"
+    source_refs:
+      - path: "<relative/path/to/domain_doc.md>"
+        heading: "<heading>"
+        evidence_type: "markdown_section"
+    ontology_refs:
+      classes:
+        - "decisionnel.assemblee_generale"
+        - "decisionnel.decision"
+        - "comptabilite.appel_de_fonds"
+      slots:
+        - "decisionnel.montant_vote"
+        - "administrative.quotite"
+      enum_slots: []
+      edges:
+        - "decision_vote_budget"
+        - "appel_fonds_concerne_lot"
+    preconditions:
+      - "decision.montant_vote is not null"
+      - "affected lots have quotites"
+    calculation:
+      inputs:
+        - "decision.montant_vote"
+        - "lot.quotite"
+      formula: "appel_de_fonds.montant = montant_vote * lot.quotite / sum(quotites)"
+      outputs:
+        - "appel_de_fonds.montant"
+    assertions:
+      - assertion_id: "total_calls_equal_voted_budget"
+        expression: "sum(appels_de_fonds.montant) == decision.montant_vote"
+        severity: "error" # error | warning | info
+    scenarios:
+      smoke:
+        min_examples: 1
+        required_variants:
+          - "budget_voted_and_calls_generated"
+      mini:
+        min_examples: 3
+        required_variants:
+          - "mixed_quotites"
+          - "partial_payment"
+          - "unpaid_call"
+      scale:
+        min_examples: 25
+        required_variants:
+          - "many_lots"
+          - "multiple_budget_lines"
+          - "overdue_reminders"
+    mapping_profile_refs: []
+    derived_gap_rule_ids:
+      - "lot_requires_quotite_for_fund_call"
+    projection_refs:
+      - "budget_vote_to_fund_calls_explainability"
+
+mapping_profiles:
+  - profile_id: "example_external_business_process_mapping"
+    source_system: "ITEROP|BOX|FRONT|other"
+    status: "draft"
+    generic_source_object: "business_process"
+    canonical_meaning: "decisionnel.assemblee_generale"
+    rules:
+      - "business_process_ID pointe vers une AG seulement quand process_type et le bundle de champs correspondent a la signature AG."
+
+scenario_coverage:
+  smoke:
+    purpose: "Prouver les chemins critiques de bout en bout avec un minimum de donnees."
+    required_rule_ids: []
+  mini:
+    purpose: "Couvrir les cas normaux, exceptions et croisements entre ontologies."
+    required_rule_ids: []
+  scale:
+    purpose: "Tester volumes, allocations, traversals graphe et retrieval."
+    required_rule_ids: []
+
+model_gaps:
+  - gap_id: "example_missing_slot_or_edge"
+    description: "Un element de modele reference n'existe pas encore."
+    blocking: true
+    proposed_resolution: "Ajouter le slot ou l'arete dans LinkML avant la generation fake-data."
+
+open_questions:
+  - question_id: "example_business_owner_confirmation"
+    question: "Qui valide la formule ou le cas d'exception ?"
+    owner: "domain_owner"
+    blocking: true
