@@ -45,6 +45,50 @@ GhostCrab Personal routes agents by **`artifact_kind`**, not by legacy Type A/B 
 
 **`proj_type`** (semantic type inside `analysis_plan` rows, written by `ghostcrab_project`): `FACT` | `GOAL` | `STEP` | `CONSTRAINT`. The `projection_types` table also seeds `NOTE` for pack ranking, but **`ghostcrab_project` does not accept `NOTE`**.
 
+### analysis_plan materialization naming contract
+
+When materializing an `analysis_plan` with `ghostcrab_project`, distinguish the
+legacy projection row from the answer-artifact registry row:
+
+- `ghostcrab_project` writes a legacy `projections` row with `scope`,
+  `proj_type`, `status`, `agent_id`, and free `content`.
+- `gcp brain artifact migrate --repair` backfills
+  `mindbrain_answer_artifacts` from those projection rows.
+- In Personal SQLite, `analysis_plan` registry rows intentionally keep
+  `workspace_id = NULL`; the workspace is carried by `scope`.
+
+Use this stable naming pattern:
+
+```yaml
+projection_name: copropriete_360
+scope: serenity-v4:production:copropriete_360
+artifact_kind: analysis_plan
+expected_artifact_id: analysis_plan__copropriete_360
+expected_slug: copropriete_360
+public_label: Copropriete 360
+```
+
+**Pitfall:** if `projections.content` starts with a full JSON object such as
+`{"artifact_kind":"analysis_plan","name":"copropriete_360",...}`, the migration
+may slugify the raw content and create an unusable id like
+`analysis_plan__artifact_kindanalysis_plannamecopropriete_360...`.
+
+Gate after migration:
+
+```bash
+gcp brain artifact migrate --repair --db <ghostcrab.sqlite> --workspace-id <ws>
+gcp brain artifact get analysis_plan__<projection_name>
+python3 starterkit/scripts/audit_ghostcrab_projections.py \
+  --db <ghostcrab.sqlite> \
+  --workspace <ws> \
+  --model specs/projection_catalog.yaml
+```
+
+If a registry row exists but has a dirty id, repair the registry metadata before
+creating `live_answer_view`, `answer_snapshot`, or `evidence_pack` artifacts.
+The clean registry row must expose the stable `artifact_id`, the human
+`public_label`, and the canonical `scope`.
+
 Product reference (installed first): `ghostcrab-shared/ARTIFACT_KINDS.md`, `ghostcrab-shared/PROJECTIONS_DISCOVERY.md`. Optional deep dive: [renommage.md](https://github.com/mindflight-orchestrator/ghostcrab-personal-mcp/blob/main/docs/explanation/renommage.md), `vendor/mindbrain/docs/artifacts/artifact-model.md`.
 
 ---
@@ -239,6 +283,74 @@ projections:
     scope: my-workspace:decisionnel:pilotage_hebdomadaire
 ```
 
+When manager questions become too broad because a projection combines many
+facets, add focused review candidates with grouped clusters:
+
+```bash
+python3 starterkit/scripts/analyze_projection_candidates.py \
+  --source-dir Ontologie_Chantier \
+  --projection-catalog specs/projection_catalog.yaml \
+  --manager-questions specs/manager_questions.yaml \
+  --projection-requirements specs/projection_requirements.yaml \
+  --workspace tp-chantier-full \
+  --expand-manager-question-clusters
+```
+
+The broad question is kept as the strategic candidate. The generated
+`manager_question_cluster` rows split the same requirements into shorter human
+questions such as responsibility/action, status/risk, deadlines, money,
+decision/AG, proof/compliance, source/mapping, and perimeter/object.
+
+### YAML-first manager question process
+
+Use this process when a domain has both broad management questions and many
+schema/facet/edge requirements:
+
+1. Keep `specs/projection_catalog.yaml` as the canonical list of broad
+   projection contracts. One row = one strategic retrieval surface.
+2. Keep `specs/manager_questions.yaml` as human-language entry points. These
+   questions may be broad, because they reflect how managers ask for a complete
+   situation.
+3. Keep `specs/projection_requirements.yaml` as the machine-readable coverage
+   gate for individual questions that need specific schemas, facets, or edges.
+4. Run `analyze_projection_candidates.py` with
+   `--expand-manager-question-clusters` before any materialization.
+5. Review `projection_model_validation.md` with the user:
+   - keep or rewrite broad `manager_questions` as strategic views;
+   - promote only useful `manager_question_cluster` rows;
+   - reject noisy clusters before `ghostcrab_project`;
+   - confirm every promoted row has meaningful `required_schemas`,
+     `required_facets`, and/or `required_edges`.
+6. Materialize only confirmed `analysis_plan` rows. Cluster rows are review
+   candidates, not an instruction to automatically create every sub-question.
+
+Minimal `manager_questions.yaml` shape:
+
+```yaml
+workspace_id: my-workspace
+families:
+  accounting_closeout:
+    - id: factures_paiements_rapprochement
+      projection: accounting_closeout
+      question: "Quelles factures, paiements et CODA sont rapproches, bloques ou a risque ?"
+```
+
+Minimal `projection_requirements.yaml` shape:
+
+```yaml
+question_requirements:
+  factures_paiements_rapprochement:
+    required_schemas:
+      - my-workspace:comptabilite:facture_fournisseur
+      - my-workspace:comptabilite:extrait_de_compte_bancaire
+    required_facets: [statut, montant_tvac, communication_structuree]
+    required_edges: [referencer, est_emise_par]
+```
+
+Generated cluster rows use `origin: manager_question_cluster`, inherit the
+parent schemas, and keep only the facets/edges matched by the selected cluster.
+This avoids drawer-question wording while preserving the evidence contract.
+
 Use `--recursive-markdown` only when the source reports are spread across nested Markdown folders.
 
 Materialization lookup adapts to the environment:
@@ -292,7 +404,10 @@ missing from the contract.
 
 1. Run `analyze_projection_candidates.py` during Phase B1 after reading the ontology Markdown.
 2. Review candidates with the user — confirm **`artifact_kind`** and **`proj_type`** per row in `projection_model_validation.md`.
-3. Materialize `analysis_plan` rows via `ghostcrab_project`; load `live_answer_view` via `answer-artifacts.seed.jsonl` when needed.
-4. Run `audit_ghostcrab_projections.py` after import to verify registry + graph; refresh stale `live_answer_view` artifacts.
+3. Materialize `analysis_plan` rows via `ghostcrab_project`, then run artifact
+   migration/repair and verify clean `analysis_plan__<projection_name>` ids
+   before creating downstream artifacts.
+4. Load `live_answer_view` via `answer-artifacts.seed.jsonl` when needed.
+5. Run `audit_ghostcrab_projections.py` after import to verify registry + graph; refresh stale `live_answer_view` artifacts.
 
 This keeps the model provisional until the user has validated the retrieval contract, in line with the GhostCrab data architect freeze policy.

@@ -112,14 +112,21 @@ python3 ../scripts/analyze_projection_candidates.py \
   --source-dir ./specs \
   --db "$GHOSTCRAB_SQLITE_PATH" \
   --workspace <workspace_id> \
+  --projection-catalog specs/projection_catalog.yaml \
+  --manager-questions specs/manager_questions.yaml \
+  --projection-requirements specs/projection_requirements.yaml \
+  --expand-manager-question-clusters \
   --model-contract ../templates/mvp_core_contract.yaml \
   --write-agent-context
 ```
 
 3. Revue humaine : `generated/projection_candidates/projection_model_validation.md` — valider scope, **`artifact_kind`**, `proj_type`, jobs de retrieval.
+   - Les questions `manager_questions` larges restent les vues stratégiques.
+   - Les lignes `manager_question_cluster` sont des sous-questions focalisées par facettes/arêtes ; ne matérialiser que celles que l'utilisateur confirme.
+   - Si les clusters sont bruités, corriger `manager_questions.yaml` ou `projection_requirements.yaml` avant B1 freeze.
 4. **Gate freeze :** pas de matérialisation sans confirmation utilisateur (aligné SOP2 Model Proposal).
 
-Artefacts : `projection_candidates.json`, `projection_model_validation.md`, optionnel `specs/projection_catalog.yaml`.
+Artefacts : `projection_candidates.json`, `projection_model_validation.md`, optionnels `specs/projection_catalog.yaml`, `specs/manager_questions.yaml`, `specs/projection_requirements.yaml`.
 
 ### Matérialiser — écrire le catalogue
 

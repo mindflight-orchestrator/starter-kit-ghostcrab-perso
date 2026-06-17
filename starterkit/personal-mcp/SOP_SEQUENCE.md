@@ -80,7 +80,7 @@ flowchart LR
 
 | Step | Document / tool | Done when |
 |------|-------------------|-----------|
-| B1 prep | [ROUTE_MAP § projections](ROUTE_MAP.md#route-projections), [../scripts/README_projection_tools.md](../scripts/README_projection_tools.md) | `projection_model_validation.md` reviewed — `artifact_kind` + `proj_type` confirmed |
+| B1 prep | [ROUTE_MAP § projections](ROUTE_MAP.md#route-projections), [../scripts/README_projection_tools.md](../scripts/README_projection_tools.md) | `projection_model_validation.md` reviewed — broad `manager_questions` and focused `manager_question_cluster` rows accepted/rejected; `artifact_kind` + `proj_type` confirmed |
 | B1 write | SOP2 §7.6–7.7, `ghostcrab_project` | `analysis_plan` scopes declared; optional `live_answer_view` seed |
 | B1 audit (post-import) | `audit_ghostcrab_projections.py`, SOP5 gate 7 | pack + projection_get smoke OK; refresh stale `live_answer_view` if seeded |
 

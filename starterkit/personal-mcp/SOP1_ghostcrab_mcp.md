@@ -46,6 +46,14 @@ LinkML OWL path: [SOP2_obsidian_ontologie.md](SOP2_obsidian_ontologie.md) §6 bi
 
 Prepare → materialize → work → audit : [ROUTE_MAP § projections](ROUTE_MAP.md#route-projections) and [../scripts/README_projection_tools.md](../scripts/README_projection_tools.md). SOP2 §7.6–7.7 for `ghostcrab_project` ; gate 7 in [SOP5](SOP5_structured_import.md) for `ghostcrab_pack` / `ghostcrab_projection_get`.
 
+For `analysis_plan`, use a stable `scope` of the form
+`<workspace_id>:<domain>:<projection_name>` and verify after artifact migration
+that the registry exposes `analysis_plan__<projection_name>`. In Personal
+SQLite, `analysis_plan.workspace_id` is intentionally `NULL`; do not force it.
+The workspace is carried by `scope`. See
+[../scripts/README_projection_tools.md](../scripts/README_projection_tools.md#analysis_plan-materialization-naming-contract)
+for the full naming contract and migration pitfall.
+
 **Companion skills:** [SKILL_ROUTE_MAP.md](SKILL_ROUTE_MAP.md) — `ghostcrab-projection-reviewer` (B1 prep/freeze), `ghostcrab-gap-auditor` (audit), `ghostcrab-operator` + `ghostcrab-json-answer-builder` (runtime Q&A after import).
 
 ---

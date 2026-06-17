@@ -103,6 +103,22 @@ class ProjectionCandidate:
         self.pattern_tags = self.pattern_tags or []
 
 
+@dataclass(frozen=True)
+class RequirementBundle:
+    required_schemas: list[str]
+    required_facets: list[str]
+    required_edges: list[str]
+
+
+@dataclass(frozen=True)
+class ManagerQuestionCluster:
+    id: str
+    label: str
+    question: str
+    required_facets: list[str]
+    required_edges: list[str]
+
+
 LLM_FINDINGS_SCHEMA = {
     "candidates": [
         {
@@ -980,11 +996,17 @@ def extract_manager_question_candidates(
     workspace_id: str,
     db_kind: str,
     postgres_dsn: str | None,
+    projection_requirements: dict[str, RequirementBundle] | None = None,
+    question_requirements: dict[str, RequirementBundle] | None = None,
+    expand_clusters: bool = False,
+    max_clusters_per_question: int = 4,
 ) -> list[ProjectionCandidate]:
     payload = load_yaml_file(path)
     lookup = materialized_lookup(db_path, workspace_id, db_kind, postgres_dsn)
     scopes = lookup.analysis_plan_scopes
     candidates: list[ProjectionCandidate] = []
+    projection_requirements = projection_requirements or {}
+    question_requirements = question_requirements or {}
     for family, questions in (payload.get("families") or {}).items():
         if not isinstance(questions, list):
             continue
@@ -992,15 +1014,20 @@ def extract_manager_question_candidates(
             if not isinstance(question, dict):
                 continue
             projection = str(question.get("projection") or "")
+            question_id = slugify(str(question.get("id") or ""))
             q_text = str(question.get("question") or "")
             if not q_text:
                 continue
-            name = slugify(projection or question.get("id") or q_text)
+            name = slugify(projection or question_id or q_text)
             scope = f"{workspace_id}:{slugify(str(family))}:{name}"
             matching_projection_scope = next((item for item in sorted(scopes) if projection and item.endswith(f":{projection}")), "")
             if matching_projection_scope:
                 scope = matching_projection_scope
             recommendation = "keep" if scope in scopes else "review"
+            requirements = merge_requirement_bundles(
+                projection_requirements.get(slugify(projection)),
+                question_requirements.get(question_id),
+            )
             candidates.append(
                 finalize_candidate_fields(
                     name=name,
@@ -1012,16 +1039,60 @@ def extract_manager_question_candidates(
                     expected_scope=scope,
                     retrieval_jobs=["summary"],
                     kpi_hints=[],
-                    data_dependencies=[],
+                    data_dependencies=requirements.required_schemas,
                     lookup=lookup,
                     recommendation=recommendation,
                     business_question=q_text,
                     origin="manager_questions",
+                    required_schemas=requirements.required_schemas,
+                    required_facets=requirements.required_facets,
+                    required_edges=requirements.required_edges,
                     impact_summary=f"Question manager associee a la projection `{projection}`.",
                     confidence=1.0,
                     proj_type="NOTE",
                 )
             )
+            if not expand_clusters:
+                continue
+            clusters = build_manager_question_clusters(
+                base_question=q_text,
+                bundle=requirements,
+                explicit_clusters=question.get("clusters") or [],
+                max_clusters=max_clusters_per_question,
+            )
+            for cluster in clusters:
+                cluster_name = slugify(f"{question_id or name}_{cluster.id}")
+                if not cluster_name:
+                    continue
+                cluster_question = contextual_cluster_question(question_id or name, cluster.question)
+                candidates.append(
+                    finalize_candidate_fields(
+                        name=cluster_name,
+                        label=cluster_question,
+                        ontology=slugify(str(family)),
+                        description=f"{cluster.label} pour: {q_text}",
+                        source_file=str(path),
+                        source_section=f"manager_questions.yaml#{question_id or name}",
+                        expected_scope=f"{workspace_id}:{slugify(str(family))}:{cluster_name}",
+                        retrieval_jobs=["summary"],
+                        kpi_hints=[],
+                        data_dependencies=requirements.required_schemas,
+                        lookup=lookup,
+                        recommendation="review",
+                        business_question=cluster_question,
+                        origin="manager_question_cluster",
+                        required_schemas=requirements.required_schemas,
+                        required_facets=cluster.required_facets,
+                        required_edges=cluster.required_edges,
+                        impact_summary=(
+                            f"Sous-question focalisee issue de `{question_id or name}`; "
+                            f"cluster `{cluster.id}` au lieu de combiner toutes les facettes."
+                        ),
+                        pattern_tags=["manager_question_cluster", cluster.id],
+                        confidence=0.9,
+                        proj_type="NOTE",
+                    )
+                )
     return candidates
 
 
@@ -1032,14 +1103,31 @@ def extract_source_candidates(
     recursive_markdown: bool,
     projection_catalog: Path | None,
     manager_questions: Path | None,
+    projection_requirements: Path | None,
+    expand_manager_question_clusters: bool,
+    max_manager_clusters: int,
     db_kind: str,
     postgres_dsn: str | None,
 ) -> list[ProjectionCandidate]:
     candidates = extract_markdown_candidates(source_dir, db_path, workspace_id, recursive_markdown, db_kind, postgres_dsn)
+    catalog_requirements = projection_requirements_from_catalog(projection_catalog)
+    question_requirements = load_question_requirements(projection_requirements)
     if projection_catalog and projection_catalog.exists():
         candidates.extend(extract_projection_catalog_candidates(projection_catalog, db_path, workspace_id, db_kind, postgres_dsn))
     if manager_questions and manager_questions.exists():
-        candidates.extend(extract_manager_question_candidates(manager_questions, db_path, workspace_id, db_kind, postgres_dsn))
+        candidates.extend(
+            extract_manager_question_candidates(
+                manager_questions,
+                db_path,
+                workspace_id,
+                db_kind,
+                postgres_dsn,
+                projection_requirements=catalog_requirements,
+                question_requirements=question_requirements,
+                expand_clusters=expand_manager_question_clusters,
+                max_clusters_per_question=max_manager_clusters,
+            )
+        )
     return append_unique_candidates([], candidates)
 
 
@@ -1103,6 +1191,9 @@ def extract_candidates(
     recursive_markdown: bool = False,
     projection_catalog: Path | None = None,
     manager_questions: Path | None = None,
+    projection_requirements: Path | None = None,
+    expand_manager_question_clusters: bool = False,
+    max_manager_clusters: int = 4,
     db_kind: str = "auto",
     postgres_dsn: str | None = None,
 ) -> list[ProjectionCandidate]:
@@ -1113,6 +1204,9 @@ def extract_candidates(
         recursive_markdown,
         projection_catalog,
         manager_questions,
+        projection_requirements,
+        expand_manager_question_clusters,
+        max_manager_clusters,
         db_kind,
         postgres_dsn,
     )
@@ -1128,6 +1222,207 @@ def as_list(value: Any) -> list[str]:
     if isinstance(value, str):
         return [value] if value else []
     return [str(value)]
+
+
+CLUSTER_RULES: list[dict[str, Any]] = [
+    {
+        "id": "responsabilite_action",
+        "label": "Responsabilite et action",
+        "keywords": ["owner", "gestionnaire", "responsable", "fournisseur", "accountable", "prochaine_action", "emetteur"],
+        "edge_keywords": ["assign", "porter", "escalade", "concerne", "est_portee"],
+        "question": "Qui doit agir maintenant, et sur quoi exactement ?",
+    },
+    {
+        "id": "statut_risque",
+        "label": "Statut et risque",
+        "keywords": ["statut", "status", "scenario_status", "risk", "risque", "priorite", "urgente", "blocking", "motif"],
+        "edge_keywords": ["bloque", "menace", "impacte", "supporter"],
+        "question": "Quels dossiers sont ouverts, bloques ou a risque ?",
+    },
+    {
+        "id": "delais_echeances",
+        "label": "Delais et echeances",
+        "keywords": ["date", "delai", "retard", "echeance", "age_jours", "report_count", "preavis", "prochaine_echeance"],
+        "edge_keywords": ["peut_preceder", "peut_etre_suivie"],
+        "question": "Qu'est-ce qui est en retard ou proche d'une echeance ?",
+    },
+    {
+        "id": "argent_comptabilite",
+        "label": "Argent et comptabilite",
+        "keywords": ["montant", "budget", "facture", "paiement", "fonds", "compte", "tva", "tvac", "iban", "communication_structuree", "tarif"],
+        "edge_keywords": ["est_calcule", "est_emise", "paiement", "facture"],
+        "question": "Quels montants, appels, factures ou paiements posent probleme ?",
+    },
+    {
+        "id": "decision_ag",
+        "label": "Decision et AG",
+        "keywords": ["decision", "ag", "quorum", "majorite", "vote", "procuration", "droit_de_vote", "resultat", "voted_amount"],
+        "edge_keywords": ["produit", "resulte", "generer", "fonde", "actee", "autorisation"],
+        "question": "La decision necessaire est-elle claire, valide et executable ?",
+    },
+    {
+        "id": "preuve_conformite",
+        "label": "Preuve et conformite",
+        "keywords": ["validation", "verification", "qualif", "conform", "expertise", "preuve", "evidence", "obligatoire", "business_rules"],
+        "edge_keywords": ["valide", "confirme", "contredit", "evalue", "produit_un"],
+        "question": "Quelle preuve ou validation manque avant de continuer ?",
+    },
+    {
+        "id": "source_mapping",
+        "label": "Source et mapping",
+        "keywords": ["source", "mapping", "record_id", "application", "object_type", "canonical", "identity"],
+        "edge_keywords": ["maps_to", "sourced_from"],
+        "question": "La donnee source est-elle fiable et bien transformee ?",
+    },
+    {
+        "id": "perimetre_objet",
+        "label": "Perimetre et objet",
+        "keywords": ["copropriete", "lot", "mission", "type", "canal", "origine", "localisation", "description", "objet", "partie", "zone", "sujet"],
+        "edge_keywords": ["referencer", "rattacher", "contenir", "porte_sur", "declencher", "composer", "activer", "couvre", "lie"],
+        "question": "De quel objet parle-t-on, et quel perimetre est concerne ?",
+    },
+]
+
+
+def cluster_manual_question(value: dict[str, Any]) -> ManagerQuestionCluster | None:
+    cluster_id = slugify(str(value.get("id") or value.get("label") or value.get("question") or "cluster"))
+    question = str(value.get("question") or "")
+    if not cluster_id or not question:
+        return None
+    return ManagerQuestionCluster(
+        id=cluster_id,
+        label=str(value.get("label") or question),
+        question=question,
+        required_facets=as_list(value.get("required_facets")),
+        required_edges=as_list(value.get("required_edges")),
+    )
+
+
+def humanize_slug(value: str) -> str:
+    return slugify(value).replace("_", " ")
+
+
+def contextual_cluster_question(topic: str, question: str) -> str:
+    topic = humanize_slug(topic)
+    if not topic:
+        return question
+    question = question.strip()
+    if not question:
+        return question
+    return f"Pour {topic}, {question[:1].lower()}{question[1:]}"
+
+
+def match_keywords(values: list[str], keywords: list[str]) -> list[str]:
+    matches: list[str] = []
+    for value in values:
+        normalized = slugify(value)
+        if any(keyword in normalized for keyword in keywords):
+            matches.append(value)
+    return matches
+
+
+def build_requirement_bundle(value: dict[str, Any] | None) -> RequirementBundle:
+    if not isinstance(value, dict):
+        return RequirementBundle([], [], [])
+    return RequirementBundle(
+        required_schemas=as_list(value.get("required_schemas") or value.get("data_dependencies")),
+        required_facets=as_list(value.get("required_facets")),
+        required_edges=as_list(value.get("required_edges")),
+    )
+
+
+def merge_requirement_bundles(*bundles: RequirementBundle | None) -> RequirementBundle:
+    schemas: list[str] = []
+    facets: list[str] = []
+    edges: list[str] = []
+    for bundle in bundles:
+        if bundle is None:
+            continue
+        schemas.extend(bundle.required_schemas)
+        facets.extend(bundle.required_facets)
+        edges.extend(bundle.required_edges)
+    return RequirementBundle(
+        required_schemas=sorted(set(schemas)),
+        required_facets=sorted(set(facets)),
+        required_edges=sorted(set(edges)),
+    )
+
+
+def load_question_requirements(path: Path | None) -> dict[str, RequirementBundle]:
+    if not path or not path.exists():
+        return {}
+    payload = load_yaml_file(path)
+    requirements: dict[str, RequirementBundle] = {}
+    for key, value in (payload.get("question_requirements") or {}).items():
+        if isinstance(value, dict):
+            requirements[slugify(str(key))] = build_requirement_bundle(value)
+    return requirements
+
+
+def projection_requirements_from_catalog(path: Path | None) -> dict[str, RequirementBundle]:
+    if not path or not path.exists():
+        return {}
+    payload = load_yaml_file(path)
+    requirements: dict[str, RequirementBundle] = {}
+    for item in payload.get("projections", []) or []:
+        if not isinstance(item, dict):
+            continue
+        name = slugify(str(item.get("name") or ""))
+        if name:
+            requirements[name] = build_requirement_bundle(item)
+    return requirements
+
+
+def build_manager_question_clusters(
+    *,
+    base_question: str,
+    bundle: RequirementBundle,
+    explicit_clusters: list[Any],
+    max_clusters: int,
+) -> list[ManagerQuestionCluster]:
+    clusters: list[ManagerQuestionCluster] = []
+    for item in explicit_clusters:
+        if isinstance(item, dict):
+            cluster = cluster_manual_question(item)
+            if cluster:
+                clusters.append(cluster)
+
+    seen = {cluster.id for cluster in clusters}
+    for rule in CLUSTER_RULES:
+        if len(clusters) >= max_clusters:
+            break
+        facets = match_keywords(bundle.required_facets, rule["keywords"])
+        edges = match_keywords(bundle.required_edges, rule["edge_keywords"])
+        if not facets and not edges:
+            continue
+        cluster_id = str(rule["id"])
+        if cluster_id in seen:
+            continue
+        clusters.append(
+            ManagerQuestionCluster(
+                id=cluster_id,
+                label=str(rule["label"]),
+                question=str(rule["question"]),
+                required_facets=facets,
+                required_edges=edges,
+            )
+        )
+        seen.add(cluster_id)
+
+    if clusters:
+        return clusters[:max_clusters]
+
+    if len(base_question) <= 140 or not bundle.required_facets:
+        return []
+    return [
+        ManagerQuestionCluster(
+            id="focus_minimal",
+            label="Focus minimal",
+            question="Quel point precis faut-il verifier en premier ?",
+            required_facets=bundle.required_facets[: min(4, len(bundle.required_facets))],
+            required_edges=bundle.required_edges[: min(2, len(bundle.required_edges))],
+        )
+    ]
 
 
 def load_llm_findings(
@@ -1238,7 +1533,7 @@ def known_terms_from_contract(contract: dict[str, Any]) -> dict[str, set[str]]:
 
 
 def collect_validation_gaps(candidates: list[ProjectionCandidate], contract: dict[str, Any]) -> dict[str, Any]:
-    source_origins = {"source_table", "projection_catalog", "manager_questions"}
+    source_origins = {"source_table", "projection_catalog", "manager_questions", "manager_question_cluster"}
     proposal_origins = {"analysis_lens", "llm_review"}
     source_candidates = [item for item in candidates if item.origin in source_origins]
     proposal_candidates = [item for item in candidates if item.origin in proposal_origins]
@@ -1284,6 +1579,7 @@ def write_validation_markdown(payload: dict[str, Any], path: Path) -> None:
         f"- Projections/entrées sources: {payload['summary'].get('source_input_count', 0)}",
         f"- Projections catalogue: {payload['summary'].get('projection_catalog_count', 0)}",
         f"- Questions manager: {payload['summary'].get('manager_questions_count', 0)}",
+        f"- Sous-questions manager par clusters: {payload['summary'].get('manager_question_cluster_count', 0)}",
         f"- Questions/projections ajoutees par patterns: {payload['summary'].get('analysis_lens_count', 0)}",
         f"- Questions/projections ajoutees par revue LLM: {payload['summary'].get('llm_review_count', 0)}",
         f"- Scopes materialises uniques: {payload['summary'].get('unique_materialized_scope_count', 0)}",
@@ -1315,6 +1611,17 @@ def write_validation_markdown(payload: dict[str, Any], path: Path) -> None:
             lines.extend(
                 [
                     f"- {item.get('business_question') or item['label']} -> `{item['name']}` ({item['materialization_status']})",
+                ]
+            )
+        lines.append("")
+
+    if by_origin.get("manager_question_cluster"):
+        lines.extend(["## Sous-questions manager par clusters", ""])
+        for item in by_origin["manager_question_cluster"]:
+            lines.extend(
+                [
+                    f"- {item.get('business_question') or item['label']} -> `{item['name']}` ({item['materialization_status']})",
+                    f"  - Facettes: {fmt_values(item.get('required_facets', []))}; arêtes: {fmt_values(item.get('required_edges', []))}",
                 ]
             )
         lines.append("")
@@ -1545,6 +1852,9 @@ def main() -> None:
     parser.add_argument("--recursive-markdown", action="store_true", help="Scan Markdown files recursively instead of only source-dir/*.md")
     parser.add_argument("--projection-catalog", help="Optional specs/projection_catalog.yaml to import declared projections")
     parser.add_argument("--manager-questions", help="Optional specs/manager_questions.yaml to import natural-language manager questions")
+    parser.add_argument("--projection-requirements", help="Optional specs/projection_requirements.yaml used to enrich manager question clusters")
+    parser.add_argument("--expand-manager-question-clusters", action="store_true", help="Add focused manager sub-questions from grouped facets/edges")
+    parser.add_argument("--max-manager-clusters", type=int, default=4, help="Maximum focused sub-questions generated per manager question")
     parser.add_argument("--model-contract", help="Optional artifacts/model_contract.json used to flag unknown schemas, facets, and edges")
     parser.add_argument("--role", default="manager_operations", help="Role slug used for lens-generated scopes")
     parser.add_argument("--prompt", action="append", default=[], help="Prompt text used to activate deterministic lenses")
@@ -1570,6 +1880,9 @@ def main() -> None:
         recursive_markdown=args.recursive_markdown,
         projection_catalog=Path(args.projection_catalog) if args.projection_catalog else None,
         manager_questions=Path(args.manager_questions) if args.manager_questions else None,
+        projection_requirements=Path(args.projection_requirements) if args.projection_requirements else None,
+        expand_manager_question_clusters=args.expand_manager_question_clusters,
+        max_manager_clusters=max(1, args.max_manager_clusters),
         db_kind=args.db_kind,
         postgres_dsn=args.postgres_dsn or None,
     )
@@ -1614,8 +1927,9 @@ def main() -> None:
             "llm_review_count": sum(1 for item in candidates if item.origin == "llm_review"),
             "projection_catalog_count": sum(1 for item in candidates if item.origin == "projection_catalog"),
             "manager_questions_count": sum(1 for item in candidates if item.origin == "manager_questions"),
+            "manager_question_cluster_count": sum(1 for item in candidates if item.origin == "manager_question_cluster"),
             "source_table_count": sum(1 for item in candidates if item.origin == "source_table"),
-            "source_input_count": sum(1 for item in candidates if item.origin in {"source_table", "projection_catalog", "manager_questions"}),
+            "source_input_count": sum(1 for item in candidates if item.origin in {"source_table", "projection_catalog", "manager_questions", "manager_question_cluster"}),
             "total_count": len(candidates),
             "by_artifact_kind": dict(sorted(by_artifact_kind.items())),
         },

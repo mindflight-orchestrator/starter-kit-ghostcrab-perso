@@ -101,11 +101,17 @@ python3 ../scripts/analyze_projection_candidates.py \
   --postgres-dsn "$GHOSTCRAB_DSN" \
   --workspace <workspace_id> \
   --projection-catalog specs/projection_catalog.yaml \
+  --manager-questions specs/manager_questions.yaml \
+  --projection-requirements specs/projection_requirements.yaml \
+  --expand-manager-question-clusters \
   --model-contract artifacts/model_contract.json \
   --write-agent-context
 ```
 
 3. Revue : `projection_model_validation.md` — confirmer **`artifact_kind`** + `proj_type` + confirmation utilisateur (gate freeze).
+   - `manager_questions` = vues stratégiques possibles, parfois larges.
+   - `manager_question_cluster` = déclinaisons naïves/focalisées par groupes de facettes/arêtes.
+   - Ne pas importer automatiquement tous les clusters : promouvoir seulement ceux qui correspondent à une vraie question opérateur ou agent.
 4. Enregistrer `projection_audit: mindcli` dans `../templates/import_path_choices.yaml`.
 
 ### Matérialiser
