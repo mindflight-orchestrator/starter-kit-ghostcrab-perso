@@ -29,9 +29,13 @@ gcp brain setup claude
 - **Full phase matrix:** `../personal-mcp/SKILL_ROUTE_MAP.md`
 - **Contracts:** `~/.claude/skills/ghostcrab-shared/` (`ENUM_BUSINESS_FACETS.md`, `PATH_CONTENT_FACETS.md`, `SCHEMA_DESIGN.md`, …). Skills replaced on each setup.
 
-## SOP0–SOP6 (complete per folder)
+## Canonical sequence
 
-Each edition folder contains its own SOP0–SOP6 (including local SOP2). Stay in one folder + `../templates/` + `../scripts/`.
+Use the chosen folder's `SOP_SEQUENCE.md` as the source of truth. Each edition
+folder contains its own SOP0–SOP6, but the full workflow also includes
+transverse phases when listed by the sequence: B1.5 business rules, B2.5
+projection test data, and review finalisation. Stay in one folder +
+`../templates/` + `../scripts/`.
 
 ## Constraints
 

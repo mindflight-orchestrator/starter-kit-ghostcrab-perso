@@ -4,8 +4,6 @@ Génère des **données fictives métier** alignées sur le contrat de modèle (
 
 **Route maps:** [personal-mcp/ROUTE_MAP.md § B2](../personal-mcp/ROUTE_MAP.md#route-donnees-fictives-metier) · [pro-mcp/ROUTE_MAP.md § B2](../pro-mcp/ROUTE_MAP.md#route-donnees-fictives-metier)
 
-**Projection validation:** when generated data is used to test `analysis_plan`, `answer_snapshot`, `live_answer_view`, or `evidence_pack`, also apply [../personal-mcp/SOP_projection_test_data_levels.md](../personal-mcp/SOP_projection_test_data_levels.md). Fake-data must cover structural data, business rules, manager answer payloads, and evidence links according to the artifact kind.
-
 **Review dossier:** when fake-data creates strategic evidence for humans, collect the generated reports with [../personal-mcp/SOP_review_finalisation_dossier.md](../personal-mcp/SOP_review_finalisation_dossier.md).
 
 ---
@@ -18,13 +16,11 @@ Génère des **données fictives métier** alignées sur le contrat de modèle (
 | Vault Obsidian seul (SOP3/SOP6) | Optionnel — compléter avec tabulaire synthétique |
 | Production | **Non** — remplacer par sources réelles |
 
-Phase **B2** : après contrat ontologique (B), catalogue projections (B1), et **catalogue des règles métier (B1.5)**, **avant** `gcp brain structured-import` ou COPY (C2).
+Phase **B2** : après contrat ontologique (B), catalogue projections (B1) et règles métier (B1.5), **avant** `gcp brain structured-import` ou COPY (C2).
 
-Gate obligatoire : produire `rules/business_rules_catalog.yaml` avec [personal-mcp/SOP_business_rules_catalog.md](../personal-mcp/SOP_business_rules_catalog.md). Les fake-data doivent couvrir les règles et scénarios déclarés ; elles ne doivent pas deviner les cas critiques à la place du catalogue.
-
-Gate projection : produire ou vérifier les niveaux de données décrits dans [personal-mcp/SOP_projection_test_data_levels.md](../personal-mcp/SOP_projection_test_data_levels.md) avant de considérer un snapshot ou une live view comme validé métier. Une couverture de règles verte ne suffit pas si les métriques, alertes, conclusions ou preuves ne sont pas matérialisées.
-
-**Facettes enum :** pour les domaines multi-modules, les valeurs générées et les clés de facettes dans `facets` JSON / CSV doivent respecter `<module>.<slot_snake_case>` — voir `ghostcrab-shared/ENUM_BUSINESS_FACETS.md` après `gcp brain setup`. Les clés ingest Obsidian courtes (`status`, `tags`) ne remplacent pas cette règle pour les enums LinkML.
+Phase **B2.5** complète B2 : elle vérifie que les données peuvent produire des
+réponses manager auditables (`answer_snapshot`, claims, evidence, assertions).
+Voir [../personal-mcp/SOP_projection_test_data_levels.md](../personal-mcp/SOP_projection_test_data_levels.md).
 
 ---
 
@@ -34,10 +30,11 @@ Gate projection : produire ou vérifier les niveaux de données décrits dans [p
 |----------|------|
 | `../templates/jtbd.yaml` | volumes et familles métier |
 | `../templates/mvp_core_contract.yaml` ou export MCP | `schema_id`, enums, edges fermés |
-| `../templates/business_rules_catalog.yaml` ou `rules/business_rules_catalog.yaml` | règles métier, assertions et scénarios smoke/mini/scale |
 | `../templates/ontology_core_provisioning.yaml` | types et facettes obligatoires |
 | `../templates/mapping_external_to_canonical.yaml` | clés source → canonique |
 | Ontologie Markdown (optionnel) | sections `## Projections / rapports types` |
+| `rules/business_rules_catalog.yaml` | règles, assertions et variantes à couvrir |
+| `specs/projection_catalog.yaml` | projections à tester |
 
 ---
 
@@ -55,17 +52,11 @@ generated/<workspace_id>/
 ├── contracts/
 │   ├── projection_catalog.yaml      # optional — lié B1
 │   └── mapping_external_to_canonical.json
-├── rules/
-│   └── business_rules_catalog.yaml  # B1.5 — règles, assertions, scénarios
 ├── reports/
-│   ├── fake_data_coverage.json      # couverture règles/scénarios
-│   ├── fake_data_coverage.md        # lecture humaine
-│   ├── manager_answer_snapshots.json
-│   ├── manager_answer_snapshots.md
-│   ├── snapshot_claims_evidence_matrix.json
-│   ├── snapshot_claims_evidence_matrix.csv
+│   ├── fake_data_coverage.md
+│   ├── manager_answer_snapshots.md  # B2.5 when snapshots are expected
 │   └── snapshot_claims_evidence_matrix.md
-└── import_manifest.yaml             # counts, paths, edition (runtime: generated/<ws>/import_manifest.yaml)
+└── import_manifest.json             # counts, paths, edition
 ```
 
 **Personal :** alimenter `gcp brain structured-import` (SOP5).  
@@ -76,12 +67,13 @@ generated/<workspace_id>/
 ## Règles de qualité métier
 
 1. **`schema_id` namespacé** — `<workspace_id>:<family>:<type>` (SOP2 §6).
-2. **Enums du modèle** — pas de valeurs hors liste ; clés enum LinkML en `<module>.<slot_snake_case>` (ex. `administrative.formule_service`, pas `formule_service` seul).
+2. **Enums du modèle** — pas de valeurs hors liste (ex. `FDRO`/`FDRS`/`FDROP`, pas `annuel` générique).
 3. **Ordre de génération** — entités pivots avant dépendantes (Serenity : copropriétés avant équipes).
 4. **Graphe cohérent** — arêtes uniquement entre `source_ref` existants ; labels dans la liste fermée SOP2.
 5. **Volume minimal projections** — assez de lignes pour tester les scopes B1 retenus (ex. ≥3 lignes par projection « core »).
-6. **Idempotence** — seed fixe (`--seed 42`) pour reproductibilité CI.
-7. **Couverture règles métier** — chaque règle critique du catalogue a au moins un scénario smoke et un scénario mini normal ou exception.
+6. **Règles métier couvertes** — chaque `rule_id` généré existe dans `business_rules_catalog.yaml`.
+7. **Snapshots auditables** — quand un `answer_snapshot` est attendu, chaque claim doit pointer vers des evidence entities, edges et assertions.
+8. **Idempotence** — seed fixe (`--seed 42`) pour reproductibilité CI.
 
 ---
 
@@ -120,35 +112,12 @@ Puis SOP5 : `gcp brain structured-import validate` → `apply` → `reindex`.
 
 Créer un script **projet-local** (hors starterkit) qui :
 
-1. Lit les Markdown d'ontologie + templates YAML + `rules/business_rules_catalog.yaml`.
+1. Lit les Markdown d'ontologie + templates YAML.
 2. Émet le contrat JSON et les CSV `fake_data/`.
 3. Produit `import_ready/facets_import.csv` + `edges_import.csv` au format structured-import.
 4. Valide enums / `schema_id` / ordre de dépendance avant écriture.
-5. Vérifie que les scénarios smoke/mini/scale du catalogue ont été matérialisés.
-6. Produit les payloads manager-oriented attendus par les projections (`manager_answer_snapshots.*`) quand des `answer_snapshot` ou `live_answer_view` sont prévus.
-7. Produit une matrice `snapshot_claims_evidence_matrix.*` reliant :
-   `answer_snapshot` / projection → claim → règle métier → variante → evidence refs → assertions.
 
 Référence réelle : `MVP_Serenity_2/scripts/build_serenity_v3_ontology.py` (632 facts, 152 edges, `projection_catalog.json`).
-
-### Claims auditables pour answer_snapshot
-
-Un jeu fake-data prêt pour les snapshots doit distinguer :
-
-| Statut claim | Sens |
-|--------------|------|
-| `supported` | preuve positive complète dans les facts/edges générés |
-| `supported_expected_violation` | cas d'exception généré volontairement, violation attendue observée |
-| `supported_with_model_gap_note` | preuve exploitable, mais gap modèle à garder visible |
-| `deferred` | règle reportée, typiquement `mappingProfile` off |
-
-Gate recommandé avant de matérialiser les preuves :
-
-- chaque `answer_snapshot` actif a au moins un claim ;
-- chaque claim a au moins un `evidence_ref` primaire ;
-- les assertions du catalogue sont reprises dans `assertion_results` ;
-- seuls les cas explicitement différés restent `deferred` ;
-- `smoke`, `mini` et `scale` utilisent le même contrat de claims, avec volumes différents.
 
 ---
 
@@ -157,12 +126,11 @@ Gate recommandé avant de matérialiser les preuves :
 Les fake-data **seules** ne matérialisent pas les projections. Enchaînement :
 
 1. B1 — catalogue / candidats validés  
-2. B1.5 — `rules/business_rules_catalog.yaml` confirmé
-3. **B2 — fake data**  
-4. B2.5 — projection test data levels ([../personal-mcp/SOP_projection_test_data_levels.md](../personal-mcp/SOP_projection_test_data_levels.md))
-5. C2 — import  
-6. Matérialiser ou rafraîchir : `ghostcrab_project` (`analysis_plan`) + seed `live_answer_view` + `gcp brain artifact refresh`  
-7. `audit_ghostcrab_projections.py` + gate 7 SOP5  
+2. **B2 — fake data**  
+3. C2 — import  
+4. B2.5 — générer les snapshots manager-oriented et matrices `claim -> evidence -> assertion`
+5. Matérialiser ou rafraîchir : `ghostcrab_project` (`analysis_plan`) + seed `live_answer_view` + `gcp brain artifact refresh`
+6. `audit_ghostcrab_projections.py` + gate 7 SOP5
 
 Voir [README_projection_tools.md](README_projection_tools.md).
 
@@ -171,8 +139,8 @@ Voir [README_projection_tools.md](README_projection_tools.md).
 ## Checklist B2 « done »
 
 - [ ] `model_contract.json` cohérent avec templates  
-- [ ] CSV `import_ready/` parseables ; counts documentés dans `import_manifest.yaml`  
+- [ ] CSV `import_ready/` parseables ; counts documentés dans `import_manifest.json`  
 - [ ] Enums et edges validés (dry-run gates 2–4 sans erreur bloquante)  
 - [ ] Au moins une projection B1 « core » a assez de lignes source pour un smoke test post-import  
-- [ ] Les projections attendues ont les niveaux B2.5 nécessaires : données structurelles, couverture métier, réponse manager et preuves
+- [ ] B2.5 préparé si des `answer_snapshot` ou vues manager sont attendus
 - [ ] `GHOSTCRAB_SQLITE_PATH` / DSN Pro = **même base** que le MCP actif (éviter le piège multi-SQLite Serenity)

@@ -1,4 +1,4 @@
-# Plan de routes — personal-mcp (SOP 0→6)
+# Plan de routes — personal-mcp (workflow canonique)
 
 **Édition par défaut du StarterKit.** SQLite, `gcp brain ...`, MCP `ghostcrab_*`.
 
@@ -16,13 +16,15 @@
 | Phase A | Bootstrap SQLite + MCP | [SOP4](SOP4_environment_bootstrap.md) |
 | `ghostcrab_status` OK | Choix de voies d'import | [SOP0](SOP0_import_path_choices.md) + `../templates/import_path_choices.yaml` |
 | B0 done | Modéliser workspace | [SOP1](SOP1_ghostcrab_mcp.md) + [SOP2](SOP2_obsidian_ontologie.md) |
-| LinkML (SOP0) | Ontologie formelle + activation GhostCrab | SOP2 §6 bis + `../templates/linkml_ontology.stub.yaml`; si JSON source : `../scripts/generate_linkml_from_ontology_json.py`; si multi-module/JSON : `ontology/<workspace>-contract.yaml` + `../scripts/validate_ontology_json_vs_linkml.py`; après import : `../scripts/generate_ghostcrab_schemas_from_linkml.py` |
+| LinkML (SOP0) | Ontologie formelle | SOP2 §6 bis + `../templates/linkml_ontology.stub.yaml` |
 | MCP incrémental (SOP0) | Seed unitaire | SOP2 §7 |
 | Phase B — specs OK | **Préparer projections** | [§ Route projections](#route-projections) + `../scripts/README_projection_tools.md` |
 | Projections validées | Matérialiser catalogue | `ghostcrab_project` + confirmation utilisateur |
-| Phase B1 done | **Cataloguer les règles métier** | [SOP business rules](SOP_business_rules_catalog.md) + `../templates/business_rules_catalog.yaml` |
+| Phase B1 done | **Cataloguer règles métier** | [§ Règles métier B1.5](#route-regles-metier-b15) + `../templates/business_rules_catalog.yaml` |
 | Phase B1.5 done | **Générer fake-data métier** | [§ Données fictives B2](#route-donnees-fictives-metier) + `../scripts/README_fake_business_data.md` |
-| Fake-data prêtes | Import structured-import | [SOP5](SOP5_structured_import.md) gates 0–6 |
+| Fake-data prêtes | **Préparer tests projections/snapshots** | [SOP_projection_test_data_levels.md](SOP_projection_test_data_levels.md) |
+| B2.5 done | **Centraliser validation humaine** | [SOP_review_finalisation_dossier.md](SOP_review_finalisation_dossier.md) |
+| Review done | Import structured-import | [SOP5](SOP5_structured_import.md) gates 0–6 |
 | Phase B done | Vault Obsidian à parser | [SOP3](SOP3_parsing_pipeline.md) |
 | Corpus documents | Bulk `gcp brain document` | [SOP6](SOP6_gcp_document_import.md) |
 | CSV/API/tabulaire | structured-import | [SOP5](SOP5_structured_import.md) |
@@ -37,10 +39,12 @@ flowchart LR
   SOP4[Phase A SOP4] --> SOP0[Phase B0 SOP0]
   SOP0 --> SOP1B[Phase B SOP1+SOP2]
   SOP1B --> SOP1proj[Phase B1 projections]
-  SOP1proj --> SOP15rules[Phase B1.5 business rules]
+  SOP1proj --> SOP15rules[Phase B1.5 rules]
   SOP15rules --> SOP2fake[Phase B2 fake-data]
-  SOP2fake --> SOP5C2[Phase C2 SOP5 import]
-  SOP2fake --> SOP3[Phase C opt SOP3]
+  SOP2fake --> SOP25[Phase B2.5 projection test data]
+  SOP25 --> REVIEW[Review finalisation]
+  REVIEW --> SOP5C2[Phase C2 SOP5 import]
+  REVIEW --> SOP3[Phase C opt SOP3]
   SOP1B --> SOP6[Phase C SOP6]
   SOP3 --> SOP6
 ```
@@ -49,16 +53,16 @@ flowchart LR
 |-------|-----|-----------|-----------|
 | A | SOP4 | `gcp smoke`, `gcp brain up`, `ghostcrab_status` | SQLite OK, outils MCP visibles |
 | B0 | SOP0 | `import_path_choices.yaml` | choix enregistrés |
-| B | SOP1 + SOP2 | MCP + LinkML ou incrémental | contrat central/gate JSON ↔ LinkML si applicable, import natif, activation schemas/facets, puis read tests |
+| B | SOP1 + SOP2 | MCP + LinkML ou incrémental | `ghostcrab_coverage` baseline |
 | **B1** | scripts projections | candidats + validation humaine | catalogue déclaré prêt |
-| **B1.5** | [SOP business rules](SOP_business_rules_catalog.md) | `rules/business_rules_catalog.yaml` | règles critiques reliées aux ontologies, assertions et scénarios smoke/mini/scale |
+| **B1.5** | règles métier | assertions + chaînes de preuve + projection refs | règles critiques couvertes ou gap accepté |
 | **B2** | fake-data métier | CSV `import_ready/` + manifest | gates 2–4 dry-run OK |
+| **B2.5** | projection test data | manager snapshots + claims/evidence/assertions | réponses auditables ou gaps classés |
+| Review | finalisation dossier | documents stratégiques numérotés | validation humaine prête |
 | C (opt.) | SOP3 | parsing vault → JSONB | validator OK |
 | C | SOP6 | `gcp brain document` | pipeline document OK |
 | C2 | SOP5 | `gcp brain structured-import` | facets + reindex |
 | Audit | SOP5 gates 8–9 | MCP pack + `audit_ghostcrab_projections.py` | manifest + consumers |
-
-**Gate LinkML obligatoire :** `gcp brain ontology compile --import-db` n'est pas une fin de phase. La phase B est terminée seulement quand les 4 feux sont verts : ontologies importées, schémas GhostCrab enregistrés, facettes enum enregistrées, read tests passés.
 
 ---
 
@@ -98,7 +102,7 @@ Route agents by **`artifact_kind`** first. Legacy Type A/B = compatibilité wire
 
 **`proj_type`** (`ghostcrab_project`) : `FACT` | `GOAL` | `STEP` | `CONSTRAINT` — pas `NOTE` (pack-ranking seulement).
 
-Référence installée : `ghostcrab-shared/ARTIFACT_KINDS.md`, `ghostcrab-shared/PROJECTIONS_DISCOVERY.md` (après `gcp brain setup`). Optionnel : [renommage.md](https://github.com/mindflight-orchestrator/ghostcrab-personal-mcp/blob/main/docs/explanation/renommage.md) sur GitHub.
+Référence produit : `ghostcrab-personal-mcp/docs/explanation/renommage.md`
 
 Un catalogue `analysis_plan` sain suffit pour démarrer ; `answer_snapshot` = rapport figé avec preuves graphe.
 
@@ -112,21 +116,14 @@ python3 ../scripts/analyze_projection_candidates.py \
   --source-dir ./specs \
   --db "$GHOSTCRAB_SQLITE_PATH" \
   --workspace <workspace_id> \
-  --projection-catalog specs/projection_catalog.yaml \
-  --manager-questions specs/manager_questions.yaml \
-  --projection-requirements specs/projection_requirements.yaml \
-  --expand-manager-question-clusters \
   --model-contract ../templates/mvp_core_contract.yaml \
   --write-agent-context
 ```
 
 3. Revue humaine : `generated/projection_candidates/projection_model_validation.md` — valider scope, **`artifact_kind`**, `proj_type`, jobs de retrieval.
-   - Les questions `manager_questions` larges restent les vues stratégiques.
-   - Les lignes `manager_question_cluster` sont des sous-questions focalisées par facettes/arêtes ; ne matérialiser que celles que l'utilisateur confirme.
-   - Si les clusters sont bruités, corriger `manager_questions.yaml` ou `projection_requirements.yaml` avant B1 freeze.
 4. **Gate freeze :** pas de matérialisation sans confirmation utilisateur (aligné SOP2 Model Proposal).
 
-Artefacts : `projection_candidates.json`, `projection_model_validation.md`, optionnels `specs/projection_catalog.yaml`, `specs/manager_questions.yaml`, `specs/projection_requirements.yaml`.
+Artefacts : `projection_candidates.json`, `projection_model_validation.md`, optionnel `specs/projection_catalog.yaml`.
 
 ### Matérialiser — écrire le catalogue
 
@@ -175,7 +172,34 @@ Rapports : `generated/projection_audits/projection_audit_<ws>.md` — gaps `anal
 
 Puis gate 9 : `../scripts/audit_import_pipeline.mjs` + `validate_consumer_contract.mjs`.
 
-**Answer Artifacts post-import :** charger `answer-artifacts.seed.jsonl` pour `live_answer_view` / `evidence_pack` — rafraîchir les vues (`stale` → compute via `gcp brain artifact refresh`). Voir README fake-data et `ghostcrab-shared/ARTIFACT_KINDS.md`.
+**Answer Artifacts post-import :** charger `answer-artifacts.seed.jsonl` pour `live_answer_view` / `evidence_pack` — rafraîchir les vues (`stale` → compute via `gcp brain artifact refresh`). Voir README fake-data et `renommage.md`.
+
+---
+
+## Route règles métier B1.5
+
+Les règles métier sont le pont entre les projections B1 et les données B2 : elles disent ce qui doit être vrai, calculé, interdit, déclenché, justifié ou expliqué.
+
+**Template:** [../templates/business_rules_catalog.yaml](../templates/business_rules_catalog.yaml)
+
+**SOP:** [SOP_business_rules_catalog.md](SOP_business_rules_catalog.md)
+
+### Séquence
+
+```text
+projection_model_validation.md
+  → rules/business_rules_catalog.yaml
+  → matrice règles ↔ projections
+  → fake-data scenarios / assertions
+  → audit post-import
+```
+
+### Done when
+
+- chaque règle critique a au moins une assertion testable ;
+- chaque règle critique pointe vers une projection B1 ou un `model_gap` accepté ;
+- les chaînes de preuve listent objets, facettes, arêtes et artifact_kind attendus ;
+- B2 sait quels scénarios smoke / mini / scale générer.
 
 ---
 
@@ -184,8 +208,6 @@ Puis gate 9 : `../scripts/audit_import_pipeline.mjs` + `validate_consumer_contra
 Génération **déterministe** de lignes métier pour valider modèle, import et projections **sans source externe** (pattern Serenity).
 
 **Doc:** [../scripts/README_fake_business_data.md](../scripts/README_fake_business_data.md)
-
-**Gate B1.5 obligatoire :** produire et confirmer `rules/business_rules_catalog.yaml` avec [SOP_business_rules_catalog.md](SOP_business_rules_catalog.md) avant B2. Les fake-data couvrent les règles et scénarios déclarés ; elles ne doivent pas inventer les cas métier critiques.
 
 ### Objectif
 
@@ -199,7 +221,6 @@ Produire des faits et arêtes **schema-valid** suffisants pour :
 
 ```text
 Contrat B (model_contract.json)
-  → rules/business_rules_catalog.yaml
   → script Python projet-local OU CSV manuels alignés mapping
   → generated/<ws>/fake_data/*.csv
   → generated/<ws>/import_ready/facets_import.csv + edges_import.csv
@@ -235,10 +256,47 @@ gcp brain structured-import reindex --workspace-id <ws> --scope all
 
 - **Même SQLite** que `ghostcrab_status` (`GHOSTCRAB_SQLITE_PATH`).
 - **Qualité enum** — fake-data incohérentes ⇒ projections « calculables » mais métier faux.
-- **Règles implicites** — si `business_rules_catalog.yaml` manque, les cas impayés, paiements partiels, votes, quotités ou exceptions seront probablement oubliés.
 - **Import ≠ projections** — après apply, exécuter matérialisation B1.
 
-**Done when :** `generated/<ws>/import_manifest.yaml` rempli ; `ghostcrab_count` > 0 sur schémas core ; gate 7 projections smoke OK.
+**Done when :** `import_manifest.json` rempli ; `ghostcrab_count` > 0 sur schémas core ; gate 7 projections smoke OK.
+
+---
+
+## Route projection test data (Phase B2.5)
+
+B2.5 transforme les données importables en tests de réponses métier. Elle
+prépare les snapshots manager-oriented et les matrices de preuve.
+
+**SOP:** [SOP_projection_test_data_levels.md](SOP_projection_test_data_levels.md)
+
+### Séquence
+
+```text
+rules/business_rules_catalog.yaml
+  + specs/projection_catalog.yaml
+  + generated/<ws>/fake_data_coverage.*
+  → manager_answer_snapshots.*
+  → snapshot_claims_evidence_matrix.*
+  → post-import projection_get(include_evidence=true)
+```
+
+### Done when
+
+- `smoke` prouve au moins une chaîne manager transversale ;
+- `mini` couvre les variantes critiques et exceptions ;
+- `scale` augmente les volumes sans perdre les assertions ;
+- chaque `answer_snapshot` attendu a des claims et preuves, ou un gap nommé ;
+- les rapports sont collectés dans le dossier de finalisation.
+
+---
+
+## Route review finalisation
+
+**SOP:** [SOP_review_finalisation_dossier.md](SOP_review_finalisation_dossier.md)
+
+Cette étape centralise les documents à relire par des humains. Elle ne remplace
+pas les sources : les corrections validées doivent être reportées dans les
+fichiers d'origine, puis les rapports doivent être régénérés.
 
 ---
 
@@ -246,12 +304,9 @@ gcp brain structured-import reindex --workspace-id <ws> --scope all
 
 ```yaml
 edition: personal-mcp
-ontology_path:
-  choice: linkml          # ou mcp_incremental
-tabular_path:
-  choice: structured_import_cli
-document_path:
-  choice: gcp_document
+ontology_path: linkml          # ou mcp_incremental
+tabular_path: gcp_structured_import
+document_path: gcp_document
 ```
 
 | Question | Route |
@@ -276,9 +331,6 @@ document_path:
 | **Projections — auditer** | `audit_ghostcrab_projections.py` |
 | **Fake-data métier (B2)** | script Python projet + gates `profile_source` / `transform` |
 | Ontologie formelle | `gcp brain ontology compile` |
-| Génération JSON ontologique → LinkML | `generate_linkml_from_ontology_json.py` |
-| Gate JSON ontologique ↔ LinkML | `validate_ontology_json_vs_linkml.py` |
-| Analyse OpenAPI → mappingProfile | `analyze_openapi_for_mapping_profile.py` |
 | Documents bulk | `gcp brain document` (SOP6) |
 | Tabulaire bulk | `gcp brain structured-import` (SOP5) |
 | Audit agent | MCP search, pack, coverage |
@@ -292,7 +344,6 @@ document_path:
 1. `../templates/jtbd.yaml`
 2. `../templates/mvp_core_contract.yaml`
 3. `../templates/ontology_core_provisioning.yaml`
-3 bis. `ontology/<workspace>-contract.yaml` si multi-module / JSON source / aliases / mappingProfile
 4. `../templates/initial_referential.yaml`
 5. `../templates/mapping_external_to_canonical.yaml`
 6. `../templates/disambiguation.yaml`
@@ -307,10 +358,13 @@ Clôture : `../templates/import_manifest.yaml` (`edition: personal-mcp`).
 2. [SOP0](SOP0_import_path_choices.md)
 3. [SOP1](SOP1_ghostcrab_mcp.md) + [SOP2](SOP2_obsidian_ontologie.md)
 4. **Projections :** candidats → validation → [§ Route projections](#route-projections)
-5. **Fake-data métier (B2) :** [§ Données fictives](#route-donnees-fictives-metier) → `import_ready/`
-6. **Import :** [SOP5](SOP5_structured_import.md) structured-import
-7. Optionnel : [SOP3](SOP3_parsing_pipeline.md) → [SOP6](SOP6_gcp_document_import.md)
-8. Audit : `audit_ghostcrab_projections.py` + gate 9
+5. **Règles métier (B1.5) :** [SOP_business_rules_catalog.md](SOP_business_rules_catalog.md) → `rules/business_rules_catalog.yaml`
+6. **Fake-data métier (B2) :** [§ Données fictives](#route-donnees-fictives-metier) → `import_ready/`
+7. **Projection test data (B2.5) :** [SOP_projection_test_data_levels.md](SOP_projection_test_data_levels.md) → claims/evidence/snapshots
+8. **Review :** [SOP_review_finalisation_dossier.md](SOP_review_finalisation_dossier.md) → `finalisation/<ws>/current/00_INDEX.md`
+9. **Import :** [SOP5](SOP5_structured_import.md) structured-import
+10. Optionnel : [SOP3](SOP3_parsing_pipeline.md) → [SOP6](SOP6_gcp_document_import.md)
+11. Audit : `audit_ghostcrab_projections.py` + gate 9
 
 ---
 
@@ -321,7 +375,6 @@ Clôture : `../templates/import_manifest.yaml` (`edition: personal-mcp`).
 | SOP0 | [SOP0_import_path_choices.md](SOP0_import_path_choices.md) | B0 |
 | SOP1 | [SOP1_ghostcrab_mcp.md](SOP1_ghostcrab_mcp.md) | B |
 | SOP2 | [SOP2_obsidian_ontologie.md](SOP2_obsidian_ontologie.md) | B |
-| Business rules | [SOP_business_rules_catalog.md](SOP_business_rules_catalog.md) | B1.5 |
 | SOP3 | [SOP3_parsing_pipeline.md](SOP3_parsing_pipeline.md) | C (opt.) |
 | SOP4 | [SOP4_environment_bootstrap.md](SOP4_environment_bootstrap.md) | A |
 | SOP5 | [SOP5_structured_import.md](SOP5_structured_import.md) | C2 |

@@ -8,31 +8,19 @@ alwaysApply: true
 ## Default edition: personal-mcp
 
 1. Read `starterkit/EDITIONS.md` (switch to Pro only if explicit)
-2. Resolve paths: `starterkit/personal-mcp/STARTERKIT_PATHS.md`
-3. **Default load:**
+2. **Default load:**
    - `starterkit/personal-mcp/ROUTE_MAP.md`
    - `starterkit/personal-mcp/SOP_SEQUENCE.md`
-   - `starterkit/personal-mcp/SKILL_ROUTE_MAP.md`
-4. **Pro (independent):** `starterkit/pro-mcp/ROUTE_MAP.md` + `SOP_SEQUENCE.md`
+3. **Pro (independent):** `starterkit/pro-mcp/ROUTE_MAP.md` + `SOP_SEQUENCE.md`
 
 Root `SOP*.md` stubs point to personal-mcp by default — use edition folder SOPs, not root stubs.
 
-## GhostCrab skills (product)
+## Canonical sequence
 
-After `@mindflight/ghostcrab-personal-mcp` is installed:
-
-```bash
-gcp brain setup cursor
-```
-
-Contracts: `~/.cursor/skills/ghostcrab-shared/` (`ENUM_BUSINESS_FACETS.md`, `PATH_CONTENT_FACETS.md`, `SCHEMA_DESIGN.md`, …). Skills are replaced on each setup.
-
-- **Routine routing:** `ghostcrab-shared/SKILL_ROUTE_MAP_ESSENTIALS.md`
-- **Full phase matrix:** `{starterkit}/personal-mcp/SKILL_ROUTE_MAP.md`
-
-## SOP0–SOP6 (complete per folder)
-
-Each edition folder contains its own SOP0–SOP6 (including local SOP2). Stay in one folder + `templates/` + `scripts/`.
+Use the chosen folder's `SOP_SEQUENCE.md` as the source of truth. Each edition
+folder contains its own SOP0–SOP6, but Personal also has transverse phases:
+B1.5 business rules, B2.5 projection test data, and review finalisation. Stay
+in one folder + `templates/` + `scripts/`.
 
 ## Constraints
 
@@ -44,7 +32,5 @@ Each edition folder contains its own SOP0–SOP6 (including local SOP2). Stay in
 | DDL Postgres Layer 1 | skip | `ghostcrab_ddl_*` |
 
 - Read before write: count → search → pack
-- Entity `schema_id`: `<workspace_id>:<entity_type>`
-- Facet enum schemas (LinkML): `<workspace_id>:<module>` with keys `<module>.<slot_snake_case>`
-- Ontology IDs (LinkML compile): `<workspace_id>::<module>`
+- `schema_id`: `<workspace_id>:<entity_type>`
 - Edge labels: `UPPER_SNAKE_CASE`

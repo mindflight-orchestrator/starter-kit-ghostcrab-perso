@@ -1,236 +1,142 @@
-# SOP — Catalogue des règles métier (personal-mcp)
+# SOP — Business rules catalog (personal-mcp)
 
-**Edition :** GhostCrab Personal — SQLite, `gcp brain ...`, MCP `ghostcrab_*`.
+**Edition:** GhostCrab Personal — SQLite, `gcp brain ...`, MCP `ghostcrab_*`.
 
-**Phase :** B1.5 — après préparation ontologie/schémas/projections, avant fake-data et structured-import.
+**Phase:** B1.5, between validated projections and fake-data generation.
 
-**Template :** [../templates/business_rules_catalog.yaml](../templates/business_rules_catalog.yaml)
+**Related files:**
 
-**Projection data levels:** [SOP_projection_test_data_levels.md](SOP_projection_test_data_levels.md) explains how these rules become smoke/mini/scale data, manager answer payloads, and auditable evidence for projections.
+- [SOP_SEQUENCE.md](SOP_SEQUENCE.md)
+- [ROUTE_MAP.md](ROUTE_MAP.md#route-regles-metier-b15)
+- [../templates/business_rules_catalog.yaml](../templates/business_rules_catalog.yaml)
+- [../scripts/README_fake_business_data.md](../scripts/README_fake_business_data.md)
+- [SOP_projection_test_data_levels.md](SOP_projection_test_data_levels.md)
 
 ---
 
-## 1. Objectif
+## 1. Objective
 
-Cette SOP crée le contrat explicite des règles métier entre le modèle ontologique et les données générées ou importées.
+Create a central catalog of business rules before generating fake data or
+importing real data.
 
-First principles :
+The ontology defines objects, facets and graph edges. The business rules catalog
+defines what must be true, calculated, forbidden, triggered or proven across
+those objects.
 
-- Une ontologie nomme les objets, relations, états et valeurs autorisées.
-- LinkML rend ce vocabulaire importable.
-- Les schémas et facettes GhostCrab rendent ce vocabulaire lisible par les agents MCP et les gates d'import.
-- Un catalogue de règles métier dit ce qui doit être vrai, calculé, déclenché, interdit ou explicable dans les situations réelles.
-- Les fake-data et read tests prouvent que ces règles sont couvertes.
+Without this phase, fake data may look plausible but fail to cover the real
+manager questions and operational exceptions.
 
-**Artefact obligatoire :**
+---
+
+## 2. Inputs
+
+| Input | Purpose |
+|---|---|
+| Ontology Markdown | Source business rules, legal constraints, exceptions and workflows |
+| LinkML / ontology contract | Check that rule objects, facets and edges exist |
+| `specs/manager_questions.yaml` | Business questions the rules must support |
+| `specs/projection_catalog.yaml` | Projection scopes and artifact kinds |
+| `projection_model_validation.md` | Human-validated retrieval needs |
+
+---
+
+## 3. Output
+
+Project-local output:
 
 ```text
 rules/business_rules_catalog.yaml
 ```
 
-Pour les workspaces générés, copier aussi dans :
-
-```text
-generated/<workspace_id>/rules/business_rules_catalog.yaml
-```
-
----
-
-## 2. Quand cette SOP est obligatoire
-
-Créer ou mettre à jour `rules/business_rules_catalog.yaml` dès qu'une condition est vraie :
-
-- les Markdown domaine contiennent des règles, calculs, workflows, obligations, décisions, exceptions ou exemples de scénarios ;
-- des données fictives vont valider le modèle avant l'arrivée de sources réelles ;
-- des applications/API externes exposent des objets génériques qui nécessitent un `mappingProfile` ;
-- les projections doivent répondre à "pourquoi", "combien", "qui paie", "qu'est-ce qui est en retard", "qu'est-ce qui a changé" ou "que doit-il se passer ensuite" ;
-- des graph gap rules sont nécessaires mais ne couvrent pas toute la logique métier.
-
-Ne pas sauter cette SOP parce que LinkML valide. LinkML prouve que le vocabulaire est bien formé ; il ne prouve pas que le comportement métier est représenté.
-
----
-
-## 3. Familles MECE de règles
-
-Classer chaque règle dans une seule famille primaire. Ajouter des tags secondaires seulement si utile.
-
-| Famille | Rôle | Sortie |
-|---------|------|--------|
-| `structural` | Relations graphe obligatoires, cardinalités, topologies impossibles | candidate `gap_rules` |
-| `business` | Montants, obligations, éligibilité, échéances, effets de décision | `business_rules_catalog.yaml` |
-| `workflow` | Transitions d'état, déclencheurs, cycles de vie | `business_rules_catalog.yaml` |
-| `mapping` | Champs API génériques reliés au sens métier canonique | section `mappingProfile` |
-| `scenario` | Cas smoke/mini/scale à générer et tester | fake-data |
-| `projection` | Questions métier que les agents doivent répondre avec preuves | projection catalog / answer artifacts |
-
-**Règle :** si une règle peut changer un montant, un statut, une échéance, une obligation ou un objet aval, elle appartient au catalogue métier même si elle suggère aussi une graph gap rule.
-
----
-
-## 4. Format JTBD d'une règle
-
-Chaque règle doit être compréhensible par un responsable métier, un agent IA et un script générateur.
-
-Forme recommandée :
+Recommended shape:
 
 ```yaml
-- rule_id: ag_vote_budget_travaux_repartition_quotites
-  family: business
-  title: "AG vote un budget travaux et repartit les appels selon les quotites"
-  job_to_be_done: >
-    Quand une assemblee generale vote un budget travaux, MindBrain doit expliquer
-    quels coproprietaires doivent quels montants selon leurs quotites.
-  actor: syndic
-  trigger: decision_ag_votee
-  outcome: appels_de_fonds_generes
-  ontology_refs:
-    classes:
-      - decisionnel.assemblee_generale
-      - decisionnel.decision
-      - comptabilite.appel_de_fonds
-    slots:
-      - decisionnel.montant_vote
-      - administrative.quotite
-    edges:
-      - decision_vote_budget
-      - appel_fonds_concerne_lot
-  assertions:
-    - assertion_id: total_calls_equal_voted_budget
-      expression: "sum(appels_de_fonds.montant) == decision.montant_vote"
-      severity: error
-  scenarios:
-    smoke:
-      min_examples: 1
-      required_variants:
-        - budget_voted_and_calls_generated
-    mini:
-      min_examples: 3
-      required_variants:
-        - mixed_quotites
-        - partial_payment
-        - unpaid_call
-    scale:
-      min_examples: 25
-      required_variants:
-        - many_lots
-        - multiple_budget_lines
-        - overdue_reminders
+rules:
+  - id: comptabilite.repartition_travaux_par_quotites
+    priority: critical
+    domains: [administrative, comptabilite, decisionnel, technique]
+    business_question_refs: [accounting_closeout, ag_decision_cycle]
+    trigger: decision_ag.resultat == adoptee
+    required_objects:
+      - cle_de_repartition
+      - lot
+      - budget
+      - appel_de_fonds
+    required_facets:
+      - quotites
+      - montant_total
+      - resultat
+    required_edges:
+      - resulte_de
+      - est_calcule_a_partir_de
+      - donne_lieu_a
+    assertions:
+      - sum(lot.quotites) == cle_de_repartition.base
+      - sum(appel_de_fonds.montant_total) == budget.montant_total_annuel
+    scenarios:
+      smoke: [travaux_adoptes_budget_appels]
+      mini: [adopte, rejete, prorata_interdit, regularisation]
+      scale: [volume_multi_coproprietes]
+    model_gaps: []
 ```
 
 ---
 
-## 5. Blind spots obligatoires
+## 4. MECE classification
 
-Avant d'accepter le catalogue, vérifier chaque point :
+Classify each rule in one primary family:
 
-- Des règles présentes dans les Markdown manquent dans LinkML, les projections ou les fake-data.
-- Un calcul existe en prose mais aucun slot ne porte ses entrées ou sorties.
-- Un enum d'état est valide syntaxiquement mais sans transitions métier.
-- Une relation existe dans le graphe mais aucun scénario ne prouve pourquoi elle compte.
-- Les fake-data ne couvrent que les chemins heureux ; les cas négatifs et exceptions manquent.
-- Les API externes fournissent des ids/champs génériques sans règle `mappingProfile` vers le concept canonique.
-- Les règles financières oublient paiement partiel, impayé, avoir, annulation ou échéance.
-- Les règles décisionnelles oublient résultat de vote, quorum, périmètre, ligne budgétaire ou actifs concernés.
-- Les règles techniques/intervention oublient récurrence, sévérité, fournisseur, SLA ou preuve de clôture.
-- Les projections retrouvent des faits mais ne peuvent pas expliquer la chaîne de raisonnement.
+| Family | Examples |
+|---|---|
+| `calculation` | sums, repartitions, balances, quotas |
+| `eligibility` | voting rights, mandates, ownership date |
+| `state_transition` | draft -> approved -> executed -> closed |
+| `deadline` | contestation period, reminder timing |
+| `forbidden_state` | multi-copro invoice, missing mandate, missing transcription |
+| `evidence_required` | PV, expertise, CODA, supplier quote |
+| `cross_domain` | AG decision -> budget -> calls -> works -> mission |
 
-Si un point est vrai, garder le catalogue en `status: draft` et ne pas passer en B2 fake-data.
-
----
-
-## 6. Procédure
-
-### 6.1 Entrées
-
-Lire ces sources dans l'ordre :
-
-1. `jtbd.yaml`
-2. `ontology/<workspace>-contract.yaml` si présent
-3. modules LinkML sous `ontology/` ou `generated/linkml_from_json/`
-4. documents Markdown métier
-5. projection candidates ou projection catalog
-6. analyses `mappingProfile` / OpenAPI quand des applications externes sont dans le périmètre
-
-### 6.2 Extraire les règles candidates
-
-Pour chaque source Markdown, collecter :
-
-- mentions explicites de règle, obligation, interdiction, condition, calcul, échéance, statut, vote, montant, répartition, paiement, exception ;
-- règles implicites dans les exemples, rapports ou scénarios ;
-- ambiguïtés non résolues sous `open_questions`.
-
-Conserver la référence source :
-
-```yaml
-source_refs:
-  - path: Ontologies-14-06-2026/Ontologie_Infrastructure_Comptabilite.md
-    heading: "Appels de fonds"
-    evidence_type: markdown_section
-```
-
-### 6.3 Normaliser chaque règle
-
-Pour chaque règle :
-
-- assigner un `rule_id` stable en snake_case ;
-- choisir une famille MECE primaire ;
-- écrire la phrase JTBD ;
-- relier classes, slots, enum slots et arêtes ;
-- lister préconditions, entrées de calcul, sorties et états interdits ;
-- définir les assertions ;
-- mapper les scénarios smoke/mini/scale requis ;
-- marquer le statut.
-
-### 6.4 Séparer les gap rules structurelles
-
-Si une règle est purement structurelle, dupliquer seulement la partie structurelle dans un futur pack de gap rules.
-
-Exemple :
-
-- catalogue métier : "Un lot non vacant doit avoir un propriétaire pour calculer les appels."
-- gap rule : un lot exige au moins une relation `owned_by`.
-
-Relier les deux avec `derived_gap_rule_ids`.
-
-### 6.5 Préparer la couverture fake-data
-
-Chaque règle critique doit déclarer :
-
-- au moins un scénario smoke ;
-- au moins un scénario mini normal ;
-- au moins un scénario mini exception ou négatif ;
-- des volumes scale optionnels.
-
-La génération B2 consomme le catalogue. Elle ne doit pas inventer les cas importants absents de ce fichier.
+If one rule spans several families, keep one primary family and list secondary
+families in `tags`.
 
 ---
 
-## 7. Gates d'acceptation
+## 5. Required coverage matrix
 
-`rules/business_rules_catalog.yaml` est accepté seulement quand :
+For every critical or important rule, record:
 
-- `workspace_id`, `edition`, `status` et `source_documents` sont remplis ;
-- chaque règle critique a `rule_id`, `family`, `job_to_be_done`, `trigger`, `outcome`, `ontology_refs`, `assertions` et `scenarios` ;
-- chaque classe, slot, enum slot et arête référencé existe dans LinkML ou figure dans `model_gaps` ;
-- les règles de mapping référencent un `mappingProfile` ou expliquent pourquoi aucune source externe n'est encore nécessaire ;
-- les règles structurelles sont marquées comme candidates gap rules ;
-- la couverture smoke/mini/scale est explicite ;
-- les questions ouvertes ont un owner et un statut bloquant/non bloquant.
+| Column | Meaning |
+|---|---|
+| `rule_id` | Stable id from `business_rules_catalog.yaml` |
+| `projection_refs` | Projections that must answer or display this rule |
+| `required_schemas` | Object types needed |
+| `required_facets` | Facets needed for calculations/filtering |
+| `required_edges` | Graph relations needed for proof chains |
+| `smoke_variants` | Minimal variants generated in first test |
+| `mini_variants` | Full business variants and exceptions |
+| `scale_variants` | Volume variants |
+| `model_gap` | Missing model element, if any |
 
-**Done when :** le statut peut passer à `confirmed` et le générateur B2 peut produire les fake-data sans deviner les situations métier centrales.
-
-After this SOP, run B2 fake-data generation and B2.5 projection test data validation before accepting `answer_snapshot`, `live_answer_view`, or `evidence_pack` artifacts as business-ready.
+This matrix is the gate for Phase B2 fake data.
 
 ---
 
-## 8. Relation aux autres artefacts
+## 6. Done when
 
-| Artefact | Relation |
-|----------|----------|
-| LinkML | Fournit classes, slots, enums et labels d'arêtes référencés par les règles |
-| Schémas/facettes GhostCrab | Rendent les éléments modèle visibles par MCP et les gates d'import |
-| `gap_rules` | Reçoit le sous-ensemble structurel/cardinalité, pas les calculs ni workflows |
-| `mappingProfile` | Reçoit les règles d'interprétation des champs d'applications externes |
-| fake-data | Consomme les scénarios et assertions du catalogue |
-| projections | Consomment les questions, chaînes de preuve et besoins d'explicabilité |
-| import manifest | Enregistre chemin du catalogue, statut et compteurs de couverture |
+- each critical rule has a stable `id`;
+- each critical rule has at least one assertion;
+- each critical rule maps to at least one business question or projection;
+- required objects, facets and edges are explicit;
+- smoke / mini / scale variants are declared;
+- gaps are named as `model_gaps`, not silently ignored;
+- the catalog is included in the finalisation review dossier.
+
+---
+
+## 7. Handoff
+
+Next phase:
+
+1. [SOP_projection_test_data_levels.md](SOP_projection_test_data_levels.md) to decide how smoke / mini / scale will prove the rules and snapshots.
+2. [../scripts/README_fake_business_data.md](../scripts/README_fake_business_data.md) to generate deterministic import-ready data.
+3. [SOP_review_finalisation_dossier.md](SOP_review_finalisation_dossier.md) to collect the catalog for human validation.

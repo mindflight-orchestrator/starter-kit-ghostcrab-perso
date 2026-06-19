@@ -7,23 +7,18 @@ Companion kit for GhostCrab MCP. **Default edition: personal-mcp.** Pro is a sep
 ## Start here
 
 1. [EDITIONS.md](EDITIONS.md) — confirm `personal-mcp` (default) or switch to `pro-mcp`
-2. **Default:** [personal-mcp/STARTERKIT_PATHS.md](personal-mcp/STARTERKIT_PATHS.md) → [personal-mcp/ROUTE_MAP.md](personal-mcp/ROUTE_MAP.md) + [personal-mcp/SOP_SEQUENCE.md](personal-mcp/SOP_SEQUENCE.md) + [personal-mcp/SKILL_ROUTE_MAP.md](personal-mcp/SKILL_ROUTE_MAP.md)
+2. **Default:** [personal-mcp/ROUTE_MAP.md](personal-mcp/ROUTE_MAP.md) + [personal-mcp/SOP_SEQUENCE.md](personal-mcp/SOP_SEQUENCE.md)
 3. **Pro:** [pro-mcp/ROUTE_MAP.md](pro-mcp/ROUTE_MAP.md) + [pro-mcp/SOP_SEQUENCE.md](pro-mcp/SOP_SEQUENCE.md)
 4. [QUICKSTART.md](QUICKSTART.md) — short router
 
 ```bash
-git clone git@github.com:mindflight-orchestrator/starter-kit-ghostcrab-perso.git
-cd <your-clone>
+git clone git@github.com:mindflight-orchestrator/starter-kit-ghostcrab-perso.git ~/mindbrain-starterkit
 ```
 
-Record the clone root in `{project}/.ghostcrab/starterkit-root` or set `GHOSTCRAB_STARTERKIT_ROOT` when the delivery project is not the clone itself.
-
-| Edition | Product package |
-|---------|-----------------|
-| personal-mcp (default) | `@mindflight/ghostcrab-personal-mcp` |
+| Edition | Product repo |
+|---------|----------------|
+| personal-mcp (default) | `ghostcrab-personal-mcp` |
 | pro-mcp | `ghostcrab-mcp` |
-
-After installing the product: `gcp brain setup cursor|claude|codex|generic` — skills and `ghostcrab-shared/` contracts.
 
 ---
 
@@ -36,8 +31,8 @@ starterkit/
 ├── QUICKSTART.md
 ├── templates/             # shared YAML (set edition:)
 ├── scripts/               # shared gate scripts
-├── personal-mcp/            # DEFAULT — SOP0–SOP6 + ROUTE_MAP + STARTERKIT_PATHS
-├── pro-mcp/                 # INDEPENDENT — SOP0–SOP6 + ROUTE_MAP
+├── personal-mcp/            # DEFAULT — SOP_SEQUENCE + SOP0–SOP6 + transverse SOPs
+├── pro-mcp/                 # INDEPENDENT — SOP_SEQUENCE + SOP0–SOP6
 ├── shared/SOP2_...          # stub → personal-mcp/SOP2
 └── SOP*.md                  # stubs → personal-mcp/* by default
 ```
@@ -52,12 +47,29 @@ starterkit/
 | Cursor | `cursor/starterkit.mdc` |
 | Claude Code | `claude-code/CLAUDE.md` |
 
-Default load path: `personal-mcp/SOP_SEQUENCE.md` + `personal-mcp/SKILL_ROUTE_MAP.md`. Pro: explicit `pro-mcp/` folder.
+Default load path: `personal-mcp/SOP_SEQUENCE.md`. Pro: explicit `pro-mcp/` folder.
+
+`SOP_SEQUENCE.md` is the canonical checklist. Do not stop at SOP0–SOP6 when the
+workflow reaches business rules, projection test data, finalisation review,
+snapshots or scenario comparison.
+
+## Canonical workflow summary
+
+| Phase | Goal | Main output |
+|---|---|---|
+| A | Verify runtime and DB | `ghostcrab_status` OK |
+| B0 | Choose import routes | `import_path_choices.yaml` |
+| B | Model ontology/schemas | contract, LinkML, schemas/facets |
+| B1 | Identify business questions/projections | `projection_model_validation.md`, `projection_catalog.yaml` |
+| B1.5 | Normalize business rules | `rules/business_rules_catalog.yaml` |
+| B2 | Generate fake/real test data | `fake_data/`, `import_ready/`, coverage reports |
+| B2.5 | Test manager answers and evidence | snapshots + claims/evidence/assertions matrix |
+| Review | Human supervision dossier | `finalisation/<ws>/current/00_INDEX.md` |
+| C/C2 | Import and reindex | structured/document import manifest |
+| Audit | Validate answers | projection and snapshot audit reports |
 
 ---
 
-## Product reference (personal-mcp)
+## Product docs (personal-mcp)
 
-Runtime contracts: install skills → `ghostcrab-shared/` (`ONBOARDING_CONTRACT.md`, `ENUM_BUSINESS_FACETS.md`, `CAPABILITIES.md`, …).
-
-Optional human docs: [ghostcrab-personal-mcp](https://github.com/mindflight-orchestrator/ghostcrab-personal-mcp) (operator catalog, ontology hub, MECE lab).
+Sibling clone `ghostcrab-personal-mcp`: glossary, [operator-catalog](https://github.com/mindflight-orchestrator/ghostcrab-personal-mcp/blob/main/docs/reference/operator-catalog.md), ontology hub, setup runbooks.
