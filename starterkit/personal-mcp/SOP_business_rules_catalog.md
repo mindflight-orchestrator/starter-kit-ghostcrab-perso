@@ -6,6 +6,8 @@
 
 **Template :** [../templates/business_rules_catalog.yaml](../templates/business_rules_catalog.yaml)
 
+**Projection data levels:** [SOP_projection_test_data_levels.md](SOP_projection_test_data_levels.md) explains how these rules become smoke/mini/scale data, manager answer payloads, and auditable evidence for projections.
+
 ---
 
 ## 1. Objectif
@@ -217,6 +219,8 @@ La génération B2 consomme le catalogue. Elle ne doit pas inventer les cas impo
 
 **Done when :** le statut peut passer à `confirmed` et le générateur B2 peut produire les fake-data sans deviner les situations métier centrales.
 
+After this SOP, run B2 fake-data generation and B2.5 projection test data validation before accepting `answer_snapshot`, `live_answer_view`, or `evidence_pack` artifacts as business-ready.
+
 ---
 
 ## 8. Relation aux autres artefacts
@@ -230,4 +234,3 @@ La génération B2 consomme le catalogue. Elle ne doit pas inventer les cas impo
 | fake-data | Consomme les scénarios et assertions du catalogue |
 | projections | Consomment les questions, chaînes de preuve et besoins d'explicabilité |
 | import manifest | Enregistre chemin du catalogue, statut et compteurs de couverture |
-

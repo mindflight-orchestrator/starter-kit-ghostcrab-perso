@@ -19,6 +19,8 @@ Prerequisite: Phase B0 — `structured_import_cli` in `../templates/import_path_
 
 **Phase B2 (recommended):** generate deterministic fake business rows before first bulk apply — [../scripts/README_fake_business_data.md](../scripts/README_fake_business_data.md), [ROUTE_MAP § B2](ROUTE_MAP.md#route-donnees-fictives-metier). Skip only if real sources are already profiled and mapped and the B1.5 decision records how they cover business rules.
 
+**Phase B2.5 (mandatory for projections):** validate projection test data levels with [SOP_projection_test_data_levels.md](SOP_projection_test_data_levels.md). `answer_snapshot`, `live_answer_view`, and `evidence_pack` artifacts need manager answer and evidence data, not only importable facts.
+
 **Path resolution:** [STARTERKIT_PATHS.md](STARTERKIT_PATHS.md) — agents: `GHOSTCRAB_STARTERKIT_ROOT` or `.ghostcrab/starterkit-root`; CLI: `GCP_STARTERKIT_ROOT`, `--starterkit-root`, or `paths.starterkit_root` in `import_path_choices.yaml`.
 
 Closure gates: installed `ghostcrab-shared/IMPORT_CLOSURE_GATES.md`. Tabular CLI details: [ghostcrab-personal-mcp structured-import](https://github.com/mindflight-orchestrator/ghostcrab-personal-mcp/blob/main/docs/setup/structured-import.md).
@@ -38,7 +40,7 @@ Closure gates: installed `ghostcrab-shared/IMPORT_CLOSURE_GATES.md`. Tabular CLI
 | 4 | `../scripts/transform_source_to_jsonb.mjs` | `gcp brain structured-import validate` |
 | 5 | `../scripts/import_facets.mjs` (plan only) | `register-semantics` → `apply` → `agent_facts` |
 | 6 | `../scripts/materialize_graph_from_edges.mjs` | `apply` + `structured-import reindex --scope graph` |
-| 7 | — | `ghostcrab_pack`, `ghostcrab_projection_get` |
+| 7 | `SOP_projection_test_data_levels.md` | `ghostcrab_pack`, `ghostcrab_projection_get`, `ghostcrab_live_refresh`, evidence links |
 | 8 | `../scripts/validate_consumer_contract.mjs` | `../templates/consumer_contract.yaml` |
 | 9 | `../scripts/audit_import_pipeline.mjs` | `../templates/import_manifest.yaml` |
 

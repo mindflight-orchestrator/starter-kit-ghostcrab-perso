@@ -2,6 +2,10 @@
 
 These Python helpers support the GhostCrab projection workflow around SOP1, SOP2, SOP3, and SOP5.
 
+For generated data projects, validate projection data readiness with [../personal-mcp/SOP_projection_test_data_levels.md](../personal-mcp/SOP_projection_test_data_levels.md) before treating snapshots, live views, or evidence packs as business-ready.
+
+When projection audits, snapshots, or evidence matrices need human validation, collect them into a numbered review dossier with [../personal-mcp/SOP_review_finalisation_dossier.md](../personal-mcp/SOP_review_finalisation_dossier.md).
+
 They cover two different moments:
 
 1. **Audit existing answer artifacts and projections** already stored in a GhostCrab SQLite or PostgreSQL database.
@@ -20,6 +24,19 @@ Pair these StarterKit scripts with GhostCrab agent skills ([../personal-mcp/SKIL
 | SOP5 gate 7 (`ghostcrab_pack`, `ghostcrab_projection_get`) | `ghostcrab-operator` + `ghostcrab-json-answer-builder` |
 
 Install skills: `gcp brain setup cursor|claude|codex|generic` from `ghostcrab-personal-mcp`.
+
+## Projection data readiness
+
+`analysis_plan`, `answer_snapshot`, `live_answer_view`, and `evidence_pack` do not require the same data. Before audit acceptance, apply [../personal-mcp/SOP_projection_test_data_levels.md](../personal-mcp/SOP_projection_test_data_levels.md):
+
+| Artifact kind | Required data levels |
+|---------------|----------------------|
+| `analysis_plan` | structural retrieval contract, optional business rule references |
+| `answer_snapshot` | structural data + business coverage + manager answer payload + evidence links |
+| `live_answer_view` | structural data + business coverage + refreshable manager metrics |
+| `evidence_pack` | evidence matrix and stable evidence refs |
+
+If `audit_ghostcrab_projections.py` finds a snapshot but the payload lacks metrics, alerts, or `include_evidence=true` support, classify the issue as a projection data-level gap, not only as a graph/import gap.
 
 ## Answer artifact taxonomy (canonical)
 

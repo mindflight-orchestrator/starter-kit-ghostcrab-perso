@@ -25,7 +25,7 @@
 
 ## How to use
 
-1. Phases **in order** (A → B0 → B → **B1** → **B1.5** → **B2** → C / C2).
+1. Phases **in order** (A → B0 → B → **B1** → **B1.5** → **B2** → review/finalisation → C / C2).
 2. Load **only** files in this folder + `../templates/` + `../scripts/`.
 3. `edition: personal-mcp` in `../templates/import_manifest.yaml`.
 4. Match each phase to GhostCrab skills via [SKILL_ROUTE_MAP.md](SKILL_ROUTE_MAP.md) (`gcp brain setup cursor|claude|codex|generic` for install).
@@ -38,13 +38,17 @@ flowchart LR
   B1[Phase B1 projections]
   B15[Phase B1.5 business rules]
   B2[Phase B2 fake-data]
+  B25[Phase B2.5 projection test data]
+  R[Review finalisation dossier]
   C3[Phase C opt SOP3]
   C6[Phase C SOP6]
   C2[Phase C2 SOP5]
   A --> B0 --> B --> B1 --> B15 --> B2
-  B2 --> C3 --> C6
-  B2 --> C6
-  B2 --> C2
+  B2 --> B25
+  B25 --> R
+  R --> C3 --> C6
+  R --> C6
+  R --> C2
 ```
 
 ---
@@ -107,6 +111,26 @@ Skip B2 only when real tabular sources are already validated (document in `impor
 
 ---
 
+## Phase B2.5 — Projection test data levels
+
+| Step | Document / tool | Done when |
+|------|-------------------|-----------|
+| B2.5 | [SOP_projection_test_data_levels.md](SOP_projection_test_data_levels.md), [../scripts/README_fake_business_data.md](../scripts/README_fake_business_data.md), [../scripts/README_projection_tools.md](../scripts/README_projection_tools.md) | active projections have structural, business coverage, manager answer, and evidence data as required by artifact kind |
+
+Do not accept `answer_snapshot`, `live_answer_view`, or `evidence_pack` artifacts as business-ready until B2.5 confirms the required data levels.
+
+---
+
+## Cross-phase — Review finalisation dossier
+
+| Step | Document / tool | Done when |
+|------|-------------------|-----------|
+| review | [SOP_review_finalisation_dossier.md](SOP_review_finalisation_dossier.md) | `finalisation/<workspace_id>/current/00_INDEX.md` lists strategic documents; review rounds preserve human annotations |
+
+Use this after new strategic artifacts are produced: business questions, rules, fake-data coverage, projection test data, snapshots, evidence matrices, import audits, or scenario comparisons.
+
+---
+
 ## Phase C — Vault prep (optional)
 
 | Step | Document | Done when |
@@ -147,6 +171,8 @@ Skip B2 only when real tabular sources are already validated (document in `impor
 | SOP1 | [SOP1_ghostcrab_mcp.md](SOP1_ghostcrab_mcp.md) | B |
 | SOP2 | [SOP2_obsidian_ontologie.md](SOP2_obsidian_ontologie.md) | B |
 | Business rules | [SOP_business_rules_catalog.md](SOP_business_rules_catalog.md) | B1.5 |
+| Projection test data | [SOP_projection_test_data_levels.md](SOP_projection_test_data_levels.md) | B2.5 |
+| Review finalisation | [SOP_review_finalisation_dossier.md](SOP_review_finalisation_dossier.md) | cross-phase |
 | SOP3 | [SOP3_parsing_pipeline.md](SOP3_parsing_pipeline.md) | C (opt.) |
 | SOP4 | [SOP4_environment_bootstrap.md](SOP4_environment_bootstrap.md) | A |
 | SOP5 | [SOP5_structured_import.md](SOP5_structured_import.md) | C2 |
