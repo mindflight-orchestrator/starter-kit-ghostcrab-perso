@@ -47,6 +47,10 @@ def dt_from_unix(value: int | None) -> str | None:
 def load_model_contract(path: Path | None) -> dict[str, Any]:
     if not path or not path.exists():
         return {}
+    if path.suffix.lower() in {".yaml", ".yml"}:
+        import yaml
+
+        return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     return json.loads(path.read_text(encoding="utf-8"))
 
 
@@ -91,6 +95,27 @@ def load_planned_projections(model: dict[str, Any], workspace_id: str | None) ->
                             "required_edges": [],
                         }
                     )
+    elif isinstance(projections, list):
+        # StarterKit projection_catalog.yaml shape:
+        # {"projections": [{name, scope, required_schemas, ...}]}
+        for value in projections:
+            if not isinstance(value, dict) or not value.get("name"):
+                continue
+            name = str(value["name"])
+            scope = value.get("scope") or f"{workspace}:projection:{name}"
+            planned.append(
+                {
+                    "workspace_id": workspace,
+                    "ontology": scope.split(":")[1] if scope.startswith(f"{workspace}:") and len(scope.split(":")) > 2 else "projection",
+                    "name": name,
+                    "expected_scope": scope,
+                    "label": value.get("label", name),
+                    "business_question": value.get("business_question", ""),
+                    "required_schemas": value.get("required_schemas", []),
+                    "required_facets": value.get("required_facets", []),
+                    "required_edges": value.get("required_edges", []),
+                }
+            )
     return planned
 
 
@@ -613,6 +638,7 @@ def audit(
 
     answer_artifacts = backend.get("answer_artifacts") or []
     live_views = [row for row in answer_artifacts if row.get("artifact_kind") == "live_answer_view"]
+    registry_answer_snapshots = [row for row in answer_artifacts if row.get("artifact_kind") == "answer_snapshot"]
     evidence_packs = [row for row in answer_artifacts if row.get("artifact_kind") == "evidence_pack"]
     registry_analysis_plans = [row for row in answer_artifacts if row.get("artifact_kind") == "analysis_plan"]
     stale_live_views = [row for row in live_views if row.get("lifecycle") == "stale"]
@@ -678,8 +704,25 @@ def audit(
     # answer_snapshot = graph-level calculated projection snapshots (legacy Type B).
     type_b_results = backend.get("graph", {}).get("projection_results", [])
     type_b_projection_ids = {row.get("projection_id") for row in type_b_results if row.get("projection_id")}
+    registry_answer_snapshot_ids = {row.get("artifact_id") for row in registry_answer_snapshots if row.get("artifact_id")}
+    registry_answer_snapshot_slugs = {row.get("slug") for row in registry_answer_snapshots if row.get("slug")}
+    registry_answer_snapshot_keys = {
+        str(artifact_id).replace("answer_snapshot__", "", 1)
+        for artifact_id in registry_answer_snapshot_ids
+        if artifact_id
+    } | registry_answer_snapshot_slugs
     planned_type_b_materialized = [item for item in planned if item["name"] in type_b_projection_ids or projection_name_from_scope(item["expected_scope"]) in type_b_projection_ids]
     planned_type_b_missing = [item for item in planned if item not in planned_type_b_materialized]
+    planned_answer_snapshot_materialized = [
+        item
+        for item in planned
+        if item["name"] in type_b_projection_ids
+        or projection_name_from_scope(item["expected_scope"]) in type_b_projection_ids
+        or item["name"] in registry_answer_snapshot_keys
+        or projection_name_from_scope(item["expected_scope"]) in registry_answer_snapshot_keys
+        or f"answer_snapshot__{item['name']}" in registry_answer_snapshot_ids
+    ]
+    planned_answer_snapshot_missing = [item for item in planned if item not in planned_answer_snapshot_materialized]
 
     relation_counts = Counter(row["type"] for row in backend.get("graph", {}).get("relations", []))
     schema_counts = Counter(backend.get("schema_counts", {}))
@@ -719,7 +762,9 @@ def audit(
             "projection_count": len(projections),
             "analysis_plan_row_count": len(projections),
             "type_a_declared_projection_count": len(projections),
-            "answer_snapshot_count": len(type_b_results),
+            "answer_snapshot_count": len(registry_answer_snapshots) + len(type_b_results),
+            "registry_answer_snapshot_count": len(registry_answer_snapshots),
+            "graph_answer_snapshot_count": len(type_b_results),
             "type_b_projection_result_count": len(type_b_results),
             "live_answer_view_count": len(live_views),
             "evidence_pack_count": len(evidence_packs),
@@ -734,8 +779,8 @@ def audit(
             "planned_analysis_plan_missing_count": len(planned_missing),
             "planned_type_b_materialized_count": len(planned_type_b_materialized),
             "planned_type_b_missing_count": len(planned_type_b_missing),
-            "planned_answer_snapshot_materialized_count": len(planned_type_b_materialized),
-            "planned_answer_snapshot_missing_count": len(planned_type_b_missing),
+            "planned_answer_snapshot_materialized_count": len(planned_answer_snapshot_materialized),
+            "planned_answer_snapshot_missing_count": len(planned_answer_snapshot_missing),
             "planned_live_view_count": len(planned_live_views),
             "planned_live_view_materialized_count": len(planned_live_materialized),
             "planned_live_view_missing_count": len(planned_live_missing),
@@ -798,10 +843,10 @@ def audit(
         "answer_snapshot_gap": {
             "mode": "answer_snapshot",
             "planned_count": len(planned),
-            "materialized_count": len(planned_type_b_materialized),
-            "missing_count": len(planned_type_b_missing),
-            "available_projection_ids": sorted(type_b_projection_ids),
-            "missing_projection_ids": [item["name"] for item in planned_type_b_missing],
+            "materialized_count": len(planned_answer_snapshot_materialized),
+            "missing_count": len(planned_answer_snapshot_missing),
+            "available_projection_ids": sorted(type_b_projection_ids | registry_answer_snapshot_keys),
+            "missing_projection_ids": [item["name"] for item in planned_answer_snapshot_missing],
         },
         "live_answer_view_gap": {
             "mode": "live_answer_view",
@@ -862,7 +907,7 @@ def write_markdown(report: dict[str, Any], path: Path) -> None:
             "|-----------------|---------|--------|",
             "| `analysis_plan` | `projections` | Type A / `projection_type_a` |",
             "| `live_answer_view` | `mindbrain_answer_artifacts` | *(new — not Type B)* |",
-            "| `answer_snapshot` | `graph.entity` (`ProjectionResult`) | Type B / `projection_type_b` |",
+            "| `answer_snapshot` | `mindbrain_answer_artifacts` or legacy `graph.entity` (`ProjectionResult`) | Type B / `projection_type_b` |",
             "| `evidence_pack` | `mindbrain_answer_artifacts` | evidence links |",
             "",
             "Zero `answer_snapshot` rows does not mean the catalogue is missing when `analysis_plan` rows exist.",
@@ -932,6 +977,20 @@ def write_markdown(report: dict[str, Any], path: Path) -> None:
             lines.append(
                 f"- `{item.get('projection_id') or '(no projection_id)'}` | "
                 f"`{item.get('name')}` | confidence `{item.get('confidence')}`"
+            )
+    else:
+        lines.append("- n/a")
+
+    registry_snapshots = [
+        item for item in report.get("answer_artifacts", [])
+        if item.get("artifact_kind") == "answer_snapshot"
+    ]
+    lines.extend(["", "## answer_snapshot artifacts (mindbrain_answer_artifacts)", ""])
+    if registry_snapshots:
+        for item in registry_snapshots:
+            lines.append(
+                f"- `{item.get('artifact_id')}` | `{item.get('lifecycle')}` | "
+                f"`{item.get('state')}` | v{item.get('current_version')}"
             )
     else:
         lines.append("- n/a")

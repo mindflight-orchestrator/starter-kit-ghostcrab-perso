@@ -19,7 +19,8 @@
 | LinkML/SQL (SOP0) | Ontologie + DDL | SOP2 §6 bis + `ghostcrab_ddl_*` |
 | Phase B — specs OK | **Préparer projections** | [§ Route projections](#route-projections) + `../scripts/README_projection_tools.md` |
 | Projections validées | Matérialiser + auditer pragma | `ghostcrab_project` + mindCLI `mb_pragma` |
-| Phase B1 done | **Générer fake-data métier** | [§ Données fictives B2](#route-donnees-fictives-metier) |
+| Phase B1 done | **Cataloguer règles métier** | [§ Règles métier B1.5](#route-regles-metier-b15) + `../templates/business_rules_catalog.yaml` |
+| Phase B1.5 done | **Générer fake-data métier** | [§ Données fictives B2](#route-donnees-fictives-metier) |
 | Fake-data prêtes | Import COPY / compiler | [SOP5](SOP5_source_import_compiler.md) |
 | Phase B done | Vault Obsidian | [SOP3](SOP3_parsing_pipeline.md) → COPY |
 | Corpus docs plats | COPY documents | [SOP6](SOP6_document_import.md) |
@@ -35,7 +36,8 @@ flowchart LR
   SOP4[Phase A SOP4] --> SOP0[Phase B0 SOP0]
   SOP0 --> SOP1B[Phase B SOP1+SOP2]
   SOP1B --> SOP1proj[Phase B1 projections]
-  SOP1proj --> SOP2fake[Phase B2 fake-data]
+  SOP1proj --> SOP15rules[Phase B1.5 rules]
+  SOP15rules --> SOP2fake[Phase B2 fake-data]
   SOP2fake --> SOP5C2[Phase C2 SOP5 COPY]
   SOP2fake --> SOP3[Phase C SOP3 vault]
   SOP1B --> SOP6[Phase C opt SOP6 docs]
@@ -49,6 +51,7 @@ flowchart LR
 | B0 | SOP0 | choices YAML | voies enregistrées |
 | B | SOP1 + SOP2 | MCP DDL + ontologie | inspect + coverage baseline |
 | **B1** | scripts + mindCLI | candidats + catalogue pragma | `mb_pragma projections list` OK |
+| **B1.5** | règles métier | assertions + chaînes de preuve + projection refs | règles critiques couvertes ou gap accepté |
 | **B2** | fake-data métier | CSV + COPY-ready migrations | dry-run gates 0–4 OK |
 | C | SOP3 | parsing → COPY | coverage ≥ 80 % |
 | C (opt.) | SOP6 | COPY corpus docs + mindCLI | audit pragma OK |
@@ -65,12 +68,12 @@ Les projections décrivent **quelles questions métier** l'agent doit pouvoir tr
 
 ### Taxonomie answer artifacts (canonique)
 
-| `artifact_kind` | Stockage Pro | Lecture / audit |
-|-----------------|--------------|-----------------|
-| `analysis_plan` | `mb_pragma.projections` | mindCLI `mb_pragma projections list`, MCP `ghostcrab_projection_decl_list` / `ghostcrab_projection_decl_get` |
-| `live_answer_view` | `mb_pragma.answer_artifacts` si présent | MCP `ghostcrab_artifact_list artifact_kind=live_answer_view`, puis `ghostcrab_live_refresh` |
-| `answer_snapshot` | `mb_pragma.answer_artifacts` ou `graph.entity` (`ProjectionResult`) | MCP `ghostcrab_answer_snapshot_list`, puis `ghostcrab_projection_get` |
-| `evidence_pack` | `mb_pragma.answer_artifacts` si présent | MCP `ghostcrab_artifact_list artifact_kind=evidence_pack`, puis `ghostcrab_artifact_get` |
+| `artifact_kind`    | Stockage Pro                                                        | Lecture / audit                                                                                              |
+| ------------------ | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `analysis_plan`    | `mb_pragma.projections`                                             | mindCLI `mb_pragma projections list`, MCP `ghostcrab_projection_decl_list` / `ghostcrab_projection_decl_get` |
+| `live_answer_view` | `mb_pragma.answer_artifacts` si présent                             | MCP `ghostcrab_artifact_list artifact_kind=live_answer_view`, puis `ghostcrab_live_refresh`                  |
+| `answer_snapshot`  | `mb_pragma.answer_artifacts` ou `graph.entity` (`ProjectionResult`) | MCP `ghostcrab_answer_snapshot_list`, puis `ghostcrab_projection_get`                                        |
+| `evidence_pack`    | `mb_pragma.answer_artifacts` si présent                             | MCP `ghostcrab_artifact_list artifact_kind=evidence_pack`, puis `ghostcrab_artifact_get`                     |
 
 **Legacy:** Type A → `analysis_plan` · Type B → `answer_snapshot`.
 Ne plus exposer Type A / Type B aux utilisateurs finaux ; conserver ces noms
@@ -149,6 +152,32 @@ python3 ../scripts/audit_ghostcrab_projections.py \
 Comparer gaps `analysis_plan` (catalogue) vs `answer_snapshot` (`ProjectionResult`). Puis `validate_consumer_contract.mjs` et gate 9 `audit_import_pipeline.mjs`.
 
 **Rappel SOP0 :** `projection_audit: mindcli` — ne pas se limiter à MCP pack seul pour valider le catalogue.
+
+---
+
+## Route règles métier B1.5
+
+Les règles métier sont le pont entre les projections B1 et les données B2 : elles disent ce qui doit être vrai, calculé, interdit, déclenché, justifié ou expliqué.
+
+**Template:** [../templates/business_rules_catalog.yaml](../templates/business_rules_catalog.yaml)
+
+### Séquence
+
+```text
+projection_model_validation.md
+  → rules/business_rules_catalog.yaml
+  → matrice règles ↔ projections
+  → fake-data scenarios / assertions
+  → COPY / import
+  → mindCLI + MCP post-import audit
+```
+
+### Done when
+
+- chaque règle critique a au moins une assertion testable ;
+- chaque règle critique pointe vers une projection B1 ou un `model_gap` accepté ;
+- les chaînes de preuve listent objets, facettes, arêtes et artifact_kind attendus ;
+- B2 sait quels scénarios smoke / mini / scale générer.
 
 ---
 
@@ -247,10 +276,11 @@ Même ordre que SOP2 Annexe A dans `../templates/`. Clôture : `import_manifest.
 2. [SOP0](SOP0_import_path_choices.md)
 3. [SOP1](SOP1_ghostcrab_mcp.md) + [SOP2](SOP2_obsidian_ontologie.md)
 4. **Projections** : [§ Route projections](ROUTE_MAP.md#route-projections)
-5. **Fake-data (B2)** : [§ Données fictives](ROUTE_MAP.md#route-donnees-fictives-metier)
-6. [SOP5](SOP5_source_import_compiler.md) — COPY + mindCLI
-7. [SOP3](SOP3_parsing_pipeline.md) / [SOP6](SOP6_document_import.md) si corpus doc
-8. Audit : `audit_ghostcrab_projections.py` + gate 9
+5. **Règles métier (B1.5)** : [§ Règles métier](ROUTE_MAP.md#route-regles-metier-b15)
+6. **Fake-data (B2)** : [§ Données fictives](ROUTE_MAP.md#route-donnees-fictives-metier)
+7. [SOP5](SOP5_source_import_compiler.md) — COPY + mindCLI
+8. [SOP3](SOP3_parsing_pipeline.md) / [SOP6](SOP6_document_import.md) si corpus doc
+9. Audit : `audit_ghostcrab_projections.py` + gate 9
 
 ---
 

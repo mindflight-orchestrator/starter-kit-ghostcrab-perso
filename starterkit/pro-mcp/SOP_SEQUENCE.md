@@ -12,7 +12,7 @@ Pour changer de piste : [../EDITIONS.md](../EDITIONS.md).
 
 ## How to use
 
-1. Phases **in order** (A → B0 → B → **B1** → **B2** → C / C2).
+1. Phases **in order** (A → B0 → B → **B1** → **B1.5** → **B2** → C / C2).
 2. Load **only** files in this folder + `../templates/` + `../scripts/`.
 3. `edition: pro-mcp` in `../templates/import_manifest.yaml`.
 
@@ -22,16 +22,30 @@ flowchart LR
   B0[Phase B0 SOP0]
   B[Phase B SOP1+SOP2]
   B1[Phase B1 projections]
+  B15[Phase B1.5 rules]
   B2[Phase B2 fake-data]
   C3[Phase C SOP3]
   C6[Phase C opt SOP6]
   C2[Phase C2 SOP5]
-  A --> B0 --> B --> B1 --> B2
+  A --> B0 --> B --> B1 --> B15 --> B2
   B2 --> C3
   B2 --> C6
   B2 --> C2
   C3 --> C6
 ```
+
+### Work spine
+
+| Order | Phase | Required question | Done when |
+|-------|-------|-------------------|-----------|
+| 1 | Ontologies / model | Which classes, facets, edges, LinkML/SQL elements, schemas, and DDL needs exist? | model contract + Pro schema path validated |
+| 2 | B1 projections | Which manager questions and proof chains must be answerable? | `artifact_kind`, `proj_type`, scopes, evidence needs reviewed |
+| 3 | B1.5 rules | Which assertions, calculations, deadlines, transitions, and forbidden states consume or complete B1? | `rules/business_rules_catalog.yaml` + rule-to-projection coverage matrix |
+| 4 | B2 fake-data | Which scenarios prove B1 and B1.5? | `fake_data/` + `import_ready/` cover questions and rules |
+| 5 | Import | Which Pro COPY/import path applies? | COPY/import + reindex done against `DATABASE_URL` |
+| 6 | Audit | Do MCP and mindCLI consumers answer from current facts/graph? | `ghostcrab_pack`, search, mindCLI pragma, and projection audit OK |
+
+Do not start B2 until B1 and B1.5 have named the business questions, evidence chains, and rule assertions the data must prove.
 
 ---
 
@@ -67,6 +81,17 @@ flowchart LR
 | B1 prep | [ROUTE_MAP § projections](ROUTE_MAP.md#route-projections), [../scripts/README_projection_tools.md](../scripts/README_projection_tools.md) | candidates + user validation — broad `manager_questions` and focused `manager_question_cluster` rows accepted/rejected; `artifact_kind` confirmed |
 | B1 write | SOP2 §7.6–7.7, `ghostcrab_project` or SQL post-COPY | `analysis_plan` catalogue populated |
 | B1 audit | mindCLI `mb_pragma`, MCP `ghostcrab_projection_decl_list` / `ghostcrab_artifact_list` / `ghostcrab_answer_snapshot_list`, `audit_ghostcrab_projections.py` | gaps `analysis_plan` / `answer_snapshot` reviewed |
+
+---
+
+## Phase B1.5 — Business rules catalog
+
+| Step | Document / tool | Done when |
+|------|-------------------|-----------|
+| B1.5 catalog | `../templates/business_rules_catalog.yaml`, B1 `projection_model_validation.md` | `rules/business_rules_catalog.yaml` records assertions, scenarios, evidence chains, and projection refs |
+| B1.5 coverage | rule-to-projection matrix | critical rules are covered by B1 scopes or marked as accepted model gaps |
+
+Rules consume and complete projections: they define what fake-data must prove and what post-import audits must check.
 
 ---
 

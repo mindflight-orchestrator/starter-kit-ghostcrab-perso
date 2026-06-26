@@ -26,6 +26,7 @@ inputs:
   business_rules_catalog: "rules/business_rules_catalog.yaml"
   mapping_contract: "templates/mapping_external_to_canonical.yaml"
   disambiguation: "templates/disambiguation.yaml"
+  business_rules_catalog: "rules/business_rules_catalog.yaml"
   consumer_contract: "templates/consumer_contract.yaml"
 
 business_rules:
@@ -49,6 +50,8 @@ counts:
   source_records: null
   normalized_records: null
   normalized_edges: null
+  business_rules: null
+  business_rules_covered_by_projections: null
   pending_review: null
   pending_ddl: null
   imported_facets: null
