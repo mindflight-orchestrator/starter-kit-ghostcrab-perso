@@ -12,7 +12,7 @@ Pour changer de piste : [../EDITIONS.md](../EDITIONS.md).
 
 ## How to use
 
-1. Phases **in order** (A → B0 → B → **B1** → **B1.5** → **B2** → C / C2).
+1. Phases **in order** (A → B0 → B → **B1** → **Visual modeling** → **B1.5** → **B2** → C / C2).
 2. Load **only** files in this folder + `../templates/` + `../scripts/`.
 3. `edition: pro-mcp` in `../templates/import_manifest.yaml`.
 
@@ -22,12 +22,13 @@ flowchart LR
   B0[Phase B0 SOP0]
   B[Phase B SOP1+SOP2]
   B1[Phase B1 projections]
+  V[Visual modeling]
   B15[Phase B1.5 rules]
   B2[Phase B2 fake-data]
   C3[Phase C SOP3]
   C6[Phase C opt SOP6]
   C2[Phase C2 SOP5]
-  A --> B0 --> B --> B1 --> B15 --> B2
+  A --> B0 --> B --> B1 --> V --> B15 --> B2
   B2 --> C3
   B2 --> C6
   B2 --> C2
@@ -40,12 +41,17 @@ flowchart LR
 |-------|-------|-------------------|-----------|
 | 1 | Ontologies / model | Which classes, facets, edges, LinkML/SQL elements, schemas, and DDL needs exist? | model contract + Pro schema path validated |
 | 2 | B1 projections | Which manager questions and proof chains must be answerable? | `artifact_kind`, `proj_type`, scopes, evidence needs reviewed |
-| 3 | B1.5 rules | Which assertions, calculations, deadlines, transitions, and forbidden states consume or complete B1? | `rules/business_rules_catalog.yaml` + rule-to-projection coverage matrix |
-| 4 | B2 fake-data | Which scenarios prove B1 and B1.5? | `fake_data/` + `import_ready/` cover questions and rules |
-| 5 | Import | Which Pro COPY/import path applies? | COPY/import + reindex done against `DATABASE_URL` |
-| 6 | Audit | Do MCP and mindCLI consumers answer from current facts/graph? | `ghostcrab_pack`, search, mindCLI pragma, and projection audit OK |
+| 3 | Visual modeling | Can humans understand the domain, process, graph and projection coverage? | `docs/visuals/domain-map.mmd`, `process-flow.mmd`, `knowledge-graph.mmd`, `projection-coverage.mmd` reference real model/projection objects |
+| 4 | B1.5 rules | Which assertions, calculations, deadlines, transitions, and forbidden states consume or complete B1? | `rules/business_rules_catalog.yaml` + rule-to-projection coverage matrix |
+| 5 | B2 fake-data | Which scenarios prove B1 and B1.5? | `fake_data/` + `import_ready/` cover questions and rules |
+| 6 | Import | Which Pro COPY/import path applies? | COPY/import + reindex done against `DATABASE_URL` |
+| 7 | Audit | Do MCP and mindCLI consumers answer from current facts/graph? | `ghostcrab_pack`, search, mindCLI pragma, and projection audit OK |
 
 Do not start B2 until B1 and B1.5 have named the business questions, evidence chains, and rule assertions the data must prove.
+
+Do not start B1.5 until the required Mermaid diagrams in `docs/visuals/` make
+the domain, workflow branches, knowledge graph and projection coverage readable
+for human review.
 
 ---
 
@@ -81,6 +87,21 @@ Do not start B2 until B1 and B1.5 have named the business questions, evidence ch
 | B1 prep | [ROUTE_MAP § projections](ROUTE_MAP.md#route-projections), [../scripts/README_projection_tools.md](../scripts/README_projection_tools.md) | candidates + user validation — broad `manager_questions` and focused `manager_question_cluster` rows accepted/rejected; `artifact_kind` confirmed |
 | B1 write | SOP2 §7.6–7.7, `ghostcrab_project` or SQL post-COPY | `analysis_plan` catalogue populated |
 | B1 audit | mindCLI `mb_pragma`, MCP `ghostcrab_projection_decl_list` / `ghostcrab_artifact_list` / `ghostcrab_answer_snapshot_list`, `audit_ghostcrab_projections.py` | gaps `analysis_plan` / `answer_snapshot` reviewed |
+
+---
+
+## Visual modeling — Human-readable model gate
+
+| Step | Document / tool | Done when |
+|------|-------------------|-----------|
+| Visual domain | `../templates/visuals/domain-map.mmd` | `docs/visuals/domain-map.mmd` shows domains, actors and JTBD |
+| Visual process | `../templates/visuals/process-flow.mmd` | `docs/visuals/process-flow.mmd` shows workflow branches and blocked states |
+| Visual graph | `../templates/visuals/knowledge-graph.mmd` | `docs/visuals/knowledge-graph.mmd` references real model classes and relations |
+| Visual projections | `../templates/visuals/projection-coverage.mmd` | `docs/visuals/projection-coverage.mmd` maps business questions to projection ids |
+| Visual audit | `validate_mindbrain_project.py` | `visual_modeling` phase is PASS |
+
+Mermaid diagrams are validation artifacts. If humans cannot recognize the
+process in these diagrams, the model is not ready for rules, fake data or import.
 
 ---
 

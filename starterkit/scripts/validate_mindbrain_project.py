@@ -25,6 +25,14 @@ except Exception:  # pragma: no cover - YAML is optional at runtime.
 STATUS_FAIL = "FAIL"
 STATUS_PASS = "PASS"
 STATUS_WARN = "WARN"
+MERMAID_KINDS = ("flowchart", "graph", "sequenceDiagram", "stateDiagram", "erDiagram", "journey", "gantt")
+REQUIRED_VISUALS = {
+    "domain_map": "docs/visuals/domain-map.mmd",
+    "process_flow": "docs/visuals/process-flow.mmd",
+    "knowledge_graph": "docs/visuals/knowledge-graph.mmd",
+    "projection_coverage": "docs/visuals/projection-coverage.mmd",
+}
+AUDIT_REMEDIATION_VISUAL = "docs/visuals/audit-remediation-map.mmd"
 
 
 @dataclass
@@ -182,6 +190,18 @@ def edge_target(edge: dict[str, Any]) -> str:
 
 def edge_label(edge: dict[str, Any]) -> str:
     return str(edge.get("label") or edge.get("relation_type") or edge.get("type") or edge.get("predicate") or "")
+
+
+def has_mermaid_kind(text: str) -> bool:
+    stripped_lines = [line.strip() for line in text.splitlines() if line.strip() and not line.strip().startswith("%%")]
+    if not stripped_lines:
+        return False
+    first_content = stripped_lines[0]
+    return any(first_content.startswith(kind) for kind in MERMAID_KINDS)
+
+
+def text_mentions_any(text: str, values: set[str] | list[str]) -> list[str]:
+    return sorted(value for value in values if value and value in text)
 
 
 def validate_environment(ctx: ValidationContext) -> None:
@@ -348,6 +368,72 @@ def validate_projections(ctx: ValidationContext, model_classes: set[str], model_
         projection_facet_gaps=missing_facets,
     )
     return projections
+
+
+def validate_visual_modeling(ctx: ValidationContext, model_classes: set[str], projections: list[dict[str, Any]]) -> None:
+    missing_files = []
+    invalid_mermaid = []
+    empty_files = []
+    diagram_texts: dict[str, str] = {}
+
+    for key, relative_path in REQUIRED_VISUALS.items():
+        path = ctx.project / relative_path
+        if not path.exists():
+            missing_files.append(relative_path)
+            continue
+        text = path.read_text(encoding="utf-8")
+        diagram_texts[key] = text
+        if not text.strip():
+            empty_files.append(relative_path)
+        elif not has_mermaid_kind(text):
+            invalid_mermaid.append(relative_path)
+
+    for relative_path in missing_files:
+        ctx.error("missing_visual_diagram", f"required Mermaid diagram is missing: {relative_path}", "visual_modeling", ctx.project / relative_path)
+    for relative_path in empty_files:
+        ctx.error("empty_visual_diagram", f"required Mermaid diagram is empty: {relative_path}", "visual_modeling", ctx.project / relative_path)
+    for relative_path in invalid_mermaid:
+        ctx.error("invalid_mermaid_diagram", f"diagram does not start with a supported Mermaid declaration: {relative_path}", "visual_modeling", ctx.project / relative_path)
+
+    all_visual_text = "\n".join(diagram_texts.values())
+    mentioned_classes = text_mentions_any(all_visual_text, model_classes)
+    knowledge_graph_classes = text_mentions_any(diagram_texts.get("knowledge_graph", ""), model_classes)
+    projection_ids = [
+        str(item.get("projection_id") or item.get("name") or item.get("id") or "")
+        for item in projections
+        if str(item.get("projection_id") or item.get("name") or item.get("id") or "")
+    ]
+    mentioned_projections = text_mentions_any(diagram_texts.get("projection_coverage", ""), projection_ids)
+
+    process_text = diagram_texts.get("process_flow", "")
+    has_decision_branch = ("{" in process_text and "}" in process_text) or "-->|" in process_text or "-->" in process_text and "|" in process_text
+
+    if model_classes and not mentioned_classes and not missing_files:
+        ctx.error("visuals_do_not_reference_model", "Mermaid diagrams must reference at least one real ontology class", "visual_modeling")
+    if model_classes and not knowledge_graph_classes and "docs/visuals/knowledge-graph.mmd" not in missing_files:
+        ctx.error("knowledge_graph_not_tied_to_model", "knowledge-graph.mmd must reference real ontology classes", "visual_modeling", ctx.project / "docs/visuals/knowledge-graph.mmd")
+    if projection_ids and not mentioned_projections and "docs/visuals/projection-coverage.mmd" not in missing_files:
+        ctx.error("projection_coverage_not_tied_to_catalog", "projection-coverage.mmd must reference projection ids from projections/catalog.json", "visual_modeling", ctx.project / "docs/visuals/projection-coverage.mmd")
+    if process_text and not has_decision_branch:
+        ctx.error("process_flow_has_no_branch", "process-flow.mmd must show at least one decision or branch", "visual_modeling", ctx.project / "docs/visuals/process-flow.mmd")
+
+    ctx.observed["visual_diagrams"] = {
+        "required": REQUIRED_VISUALS,
+        "missing": missing_files,
+        "invalid_mermaid": invalid_mermaid,
+        "mentioned_classes": mentioned_classes,
+        "mentioned_projections": mentioned_projections,
+    }
+    ctx.mark_phase(
+        "visual_modeling",
+        STATUS_FAIL if any(err.phase == "visual_modeling" for err in ctx.errors) else STATUS_PASS,
+        required=len(REQUIRED_VISUALS),
+        missing=missing_files,
+        invalid_mermaid=invalid_mermaid,
+        mentioned_classes=mentioned_classes,
+        mentioned_projections=mentioned_projections,
+        process_flow_has_branch=has_decision_branch,
+    )
 
 
 def validate_rules(ctx: ValidationContext) -> list[dict[str, Any]]:
@@ -617,6 +703,37 @@ def validate_audit_remediation(ctx: ValidationContext) -> None:
     if incomplete_findings:
         ctx.error("incomplete_remediation_finding", "some remediation findings miss target, fix, retest, or acceptance criteria", "audit_remediation", path)
 
+    visual_path = ctx.project / AUDIT_REMEDIATION_VISUAL
+    visual_text = ""
+    if not visual_path.exists():
+        ctx.error("missing_audit_remediation_visual", f"failed audit requires {AUDIT_REMEDIATION_VISUAL}", "audit_remediation", visual_path)
+    else:
+        visual_text = visual_path.read_text(encoding="utf-8")
+        if not visual_text.strip():
+            ctx.error("empty_audit_remediation_visual", f"{AUDIT_REMEDIATION_VISUAL} is empty", "audit_remediation", visual_path)
+        elif not has_mermaid_kind(visual_text):
+            ctx.error("invalid_audit_remediation_visual", f"{AUDIT_REMEDIATION_VISUAL} is not a supported Mermaid diagram", "audit_remediation", visual_path)
+
+    visualized_findings = []
+    if visual_text:
+        for index, item in enumerate(findings, 1):
+            if not isinstance(item, dict):
+                continue
+            finding_id = str(item.get("finding_id") or f"F{index}")
+            source_code = str(item.get("source_code") or "")
+            message = str(item.get("message") or "")
+            if finding_id in visual_text or (source_code and source_code in visual_text) or (message and message in visual_text):
+                visualized_findings.append(finding_id)
+        missing_visualized = [
+            str(item.get("finding_id") or f"F{index}")
+            for index, item in enumerate(findings, 1)
+            if isinstance(item, dict) and str(item.get("finding_id") or f"F{index}") not in visualized_findings
+        ]
+        if missing_visualized:
+            ctx.error("audit_findings_not_visualized", "some remediation findings are not represented in audit-remediation-map.mmd", "audit_remediation", visual_path)
+    else:
+        missing_visualized = []
+
     ctx.observed["audit_remediation_path"] = str(path)
     ctx.mark_phase(
         "audit_remediation",
@@ -626,6 +743,9 @@ def validate_audit_remediation(ctx: ValidationContext) -> None:
         findings=len(findings),
         invalid_categories=invalid_categories,
         incomplete_findings=sorted(set(incomplete_findings)),
+        visual_path=str(visual_path),
+        visualized_findings=visualized_findings,
+        missing_visualized_findings=missing_visualized,
     )
 
 
@@ -636,10 +756,11 @@ def build_next_actions(ctx: ValidationContext) -> list[str]:
         "ontology_exploration": "complete upstream ontology exploration brief before changing the formal model",
         "model": "complete ontology/model contract",
         "projections": "complete projection catalog and manager questions",
+        "visual_modeling": "create Mermaid diagrams under docs/visuals that reference the real model and projections",
         "business_rules": "complete business rules catalog with triggers and severities",
         "fake_data": "complete scenario data with nominal, blocked, incomplete and routed cases",
         "post_import_audit": "import/reindex missing facts, graph, projections or answer artifacts, then rerun audit",
-        "audit_remediation": "create a remediation plan that maps each failed audit finding to fixes and retest commands",
+        "audit_remediation": "create remediation plan and audit-remediation-map.mmd for failed audit findings",
     }
     for phase in phase_to_action:
         result = ctx.phase_results.get(phase, {})
@@ -654,7 +775,8 @@ def validate(ctx: ValidationContext) -> dict[str, Any]:
     validate_environment(ctx)
     validate_ontology_exploration(ctx)
     model_classes, model_facets = validate_model(ctx)
-    validate_projections(ctx, model_classes, model_facets)
+    projections = validate_projections(ctx, model_classes, model_facets)
+    validate_visual_modeling(ctx, model_classes, projections)
     validate_rules(ctx)
     validate_scenario(ctx, model_classes, model_facets)
     validate_projection_audit(ctx)

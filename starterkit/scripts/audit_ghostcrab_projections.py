@@ -191,9 +191,12 @@ def fetch_answer_artifacts_sqlite(conn: sqlite3.Connection, workspace_id: str | 
 
 def fetch_answer_artifacts_postgres(cur: Any, workspace_id: str | None) -> list[dict[str, Any]]:
     for schema in ("public", "mb_pragma"):
-        if not pg_table_exists(cur, schema, "mindbrain_answer_artifacts"):
+        if pg_table_exists(cur, schema, "mindbrain_answer_artifacts"):
+            table = f"{schema}.mindbrain_answer_artifacts"
+        elif pg_table_exists(cur, schema, "answer_artifacts"):
+            table = f"{schema}.answer_artifacts"
+        else:
             continue
-        table = f"{schema}.mindbrain_answer_artifacts"
         if workspace_id:
             cur.execute(
                 f"""

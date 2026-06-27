@@ -23,7 +23,7 @@
 
 ## How to use
 
-1. Phases **in order** (A → B0 → B → **B1** → **B1.5** → **B2** → **B2.5** → review/finalisation → C / C2 → audit).
+1. Phases **in order** (A → B0 → B → **B1** → **Visual modeling** → **B1.5** → **B2** → **B2.5** → review/finalisation → C / C2 → audit).
 2. Load **only** files in this folder + `../templates/` + `../scripts/`.
 3. `edition: personal-mcp` in `../templates/import_manifest.yaml`.
 4. Match each phase to GhostCrab skills via [SKILL_ROUTE_MAP.md](SKILL_ROUTE_MAP.md) (`gcp brain setup cursor|claude|codex|generic` for install).
@@ -34,6 +34,7 @@ flowchart LR
   B0[Phase B0 SOP0]
   B[Phase B SOP1+SOP2]
   B1[Phase B1 projections]
+  V[Visual modeling]
   B15[Phase B1.5 rules]
   B2[Phase B2 fake-data]
   B25[Phase B2.5 projection test data]
@@ -41,7 +42,7 @@ flowchart LR
   C3[Phase C opt SOP3]
   C6[Phase C SOP6]
   C2[Phase C2 SOP5]
-  A --> B0 --> B --> B1 --> B15 --> B2 --> B25 --> R
+  A --> B0 --> B --> B1 --> V --> B15 --> B2 --> B25 --> R
   R --> C3 --> C6
   R --> C6
   R --> C2
@@ -55,14 +56,19 @@ flowchart LR
 | 1 | B0 import path | Which route applies: LinkML, MCP incremental, structured import, documents, API? | `import_path_choices.yaml` filled |
 | 2 | B model | Which classes, facets, edges, LinkML modules, schemas and import contracts exist? | model contract + ontology path + schema activation validated |
 | 3 | B1 projections | Which manager questions and proof chains must be answerable? | `artifact_kind`, `proj_type`, scopes, evidence needs reviewed |
-| 4 | B1.5 rules | Which assertions, calculations, deadlines, transitions, and forbidden states consume or complete B1? | `rules/business_rules_catalog.yaml` + rule-to-projection coverage matrix |
-| 5 | B2 fake-data | Which scenarios prove B1 and B1.5? | `fake_data/` + `import_ready/` cover questions and rules |
-| 6 | B2.5 projection test data | Which manager snapshots, claims, evidence and assertions prove the projections? | snapshot reports + `claim -> evidence -> assertion` matrix generated |
-| 7 | Review finalisation | Which strategic documents must humans validate, and in what order? | `finalisation/<workspace_id>/current/00_INDEX.md` generated |
-| 8 | Import | Which Personal import path applies? | structured/document import + reindex done |
-| 9 | Audit | Do MCP consumers answer from current facts/graph? | search, pack, combined search, projection_get and projection audit OK |
+| 4 | Visual modeling | Can humans understand the domain, process, graph and projection coverage? | `docs/visuals/domain-map.mmd`, `process-flow.mmd`, `knowledge-graph.mmd`, `projection-coverage.mmd` reference real model/projection objects |
+| 5 | B1.5 rules | Which assertions, calculations, deadlines, transitions, and forbidden states consume or complete B1? | `rules/business_rules_catalog.yaml` + rule-to-projection coverage matrix |
+| 6 | B2 fake-data | Which scenarios prove B1 and B1.5? | `fake_data/` + `import_ready/` cover questions and rules |
+| 7 | B2.5 projection test data | Which manager snapshots, claims, evidence and assertions prove the projections? | snapshot reports + `claim -> evidence -> assertion` matrix generated |
+| 8 | Review finalisation | Which strategic documents must humans validate, and in what order? | `finalisation/<workspace_id>/current/00_INDEX.md` generated |
+| 9 | Import | Which Personal import path applies? | structured/document import + reindex done |
+| 10 | Audit | Do MCP consumers answer from current facts/graph? | search, pack, combined search, projection_get and projection audit OK |
 
 Do not start B2 until B1 and B1.5 have named the business questions, evidence chains, and rule assertions the data must prove.
+
+Do not start B1.5 until the required Mermaid diagrams in `docs/visuals/` make
+the domain, workflow branches, knowledge graph and projection coverage readable
+for human review.
 
 ---
 
@@ -100,6 +106,21 @@ Do not start B2 until B1 and B1.5 have named the business questions, evidence ch
 | B1 prep | [ROUTE_MAP § projections](ROUTE_MAP.md#route-projections), [../scripts/README_projection_tools.md](../scripts/README_projection_tools.md) | `projection_model_validation.md` reviewed — `artifact_kind` + `proj_type` confirmed |
 | B1 write | SOP2 §7.6–7.7, `ghostcrab_project` | `analysis_plan` scopes declared; optional `live_answer_view` seed |
 | B1 audit (post-import) | `audit_ghostcrab_projections.py`, SOP5 gate 7 | pack + projection_get smoke OK; refresh stale `live_answer_view` if seeded |
+
+---
+
+## Visual modeling — Human-readable model gate
+
+| Step | Document / tool | Done when |
+|------|-------------------|-----------|
+| Visual domain | `../templates/visuals/domain-map.mmd` | `docs/visuals/domain-map.mmd` shows domains, actors and JTBD |
+| Visual process | `../templates/visuals/process-flow.mmd` | `docs/visuals/process-flow.mmd` shows workflow branches and blocked states |
+| Visual graph | `../templates/visuals/knowledge-graph.mmd` | `docs/visuals/knowledge-graph.mmd` references real model classes and relations |
+| Visual projections | `../templates/visuals/projection-coverage.mmd` | `docs/visuals/projection-coverage.mmd` maps business questions to projection ids |
+| Visual audit | `validate_mindbrain_project.py` | `visual_modeling` phase is PASS |
+
+Mermaid diagrams are validation artifacts. If humans cannot recognize the
+process in these diagrams, the model is not ready for rules, fake data or import.
 
 ---
 

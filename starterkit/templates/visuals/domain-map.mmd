@@ -1,0 +1,7 @@
+flowchart LR
+  %% Replace placeholders with real domains, actors and JTBD from analysis/ontology-exploration.yaml.
+  Operator["Operator JTBD"] --> DomainA["Domain A"]
+  User["User JTBD"] --> DomainA
+  Agent["AI Agent JTBD"] --> DomainB["Domain B"]
+  DomainA --> Pivot["Pivot / shared concept"]
+  Pivot --> DomainB

@@ -68,20 +68,30 @@ The work happens in this order:
    Example: "What is blocked?", "What is the next action?", "Which records are
    ready to import into another system?"
 
-5. **Create fake data**
+5. **Draw the process**
+   Create Mermaid diagrams in `docs/visuals/`. They are not decoration: they are
+   how non-specialists validate that the model matches the real workflow.
+   Required diagrams:
+   - `domain-map.mmd`
+   - `process-flow.mmd`
+   - `knowledge-graph.mmd`
+   - `projection-coverage.mmd`
+
+6. **Create fake data**
    Good fake data must include at least:
    - one normal case
    - one blocked case
    - one incomplete case
    - one case that routes to a next action
 
-6. **Import and reindex**
+7. **Import and reindex**
    Follow the SOP for the selected edition only. Do not mix Personal and Pro
    commands on the same run.
 
-7. **Audit**
+8. **Audit**
    Run the validator and projection audit. If anything fails, create a
-   remediation plan and fix the specific gap instead of restarting from scratch.
+   remediation plan, update `docs/visuals/audit-remediation-map.mmd`, and fix
+   the specific gap instead of restarting from scratch.
 
 ## Edition Choice
 
@@ -127,8 +137,9 @@ Do not jump directly from "we have an ontology idea" to "let's import data".
 The normal path is:
 
 ```text
-exploration -> model -> projections -> business rules -> fake data
--> projection test data -> import -> audit -> remediation if needed
+exploration -> model -> projections -> visual modeling
+-> business rules -> fake data -> projection test data -> import -> audit
+-> remediation if needed
 ```
 
 That is the difference between a graph that looks plausible and a MindBrain

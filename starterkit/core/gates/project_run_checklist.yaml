@@ -60,6 +60,21 @@ phases:
       - every_projection_has_required_facets
       - every_projection_has_proof_chain
 
+  - id: visual_modeling
+    order: 3.5
+    required: true
+    gate: hard
+    checks:
+      - visual_folder_exists
+      - domain_map_exists
+      - process_flow_exists
+      - knowledge_graph_exists
+      - projection_coverage_exists
+      - diagrams_are_valid_mermaid
+      - diagrams_reference_model_classes
+      - process_flow_has_decision_branches
+      - projection_coverage_references_projections
+
   - id: business_rules
     order: 4
     required: true
@@ -134,6 +149,8 @@ phases:
       - every_blocking_finding_has_fix_action
       - every_blocking_finding_has_retest_command
       - acceptance_criteria_exist
+      - audit_remediation_map_exists
+      - every_blocking_finding_is_visualized
 
 critical_case_tags:
   nominal:
@@ -169,3 +186,21 @@ minimums:
   business_rule_count: 1
   scenario_node_count: 1
   scenario_edge_count: 1
+
+visual_artifacts:
+  domain_map:
+    path: docs/visuals/domain-map.mmd
+    description: Domains, actors, JTBD and scope boundaries.
+  process_flow:
+    path: docs/visuals/process-flow.mmd
+    description: Workflow, decision branches, blocked states and future branches.
+  knowledge_graph:
+    path: docs/visuals/knowledge-graph.mmd
+    description: Model classes and semantic relations.
+  projection_coverage:
+    path: docs/visuals/projection-coverage.mmd
+    description: Business questions mapped to projections, rules and evidence.
+  audit_remediation_map:
+    path: docs/visuals/audit-remediation-map.mmd
+    required: when_post_import_audit_fails
+    description: Blocking audit findings mapped to fixes and retest route.

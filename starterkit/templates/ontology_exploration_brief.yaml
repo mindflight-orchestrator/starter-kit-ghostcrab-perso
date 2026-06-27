@@ -89,3 +89,15 @@ model_traceability:
   expected_facets: []
   expected_rules: []
   expected_projections: []
+
+visual_modeling:
+  required_diagrams:
+    - docs/visuals/domain-map.mmd
+    - docs/visuals/process-flow.mmd
+    - docs/visuals/knowledge-graph.mmd
+    - docs/visuals/projection-coverage.mmd
+  human_review_questions:
+    - "Est-ce que le parcours métier représenté correspond à la réalité ?"
+    - "Est-ce que chaque branche importante est visible ?"
+    - "Est-ce que les objets du modèle apparaissent dans le graphe visuel ?"
+    - "Est-ce que chaque question métier a une projection visible ?"

@@ -6,6 +6,11 @@ audit:
   audit_date: "<YYYY-MM-DD>"
   status: "FAIL"
 
+visual_impact:
+  diagram: "docs/visuals/audit-remediation-map.mmd"
+  required: true
+  purpose: "Show each blocking audit finding, its target fix and the retest path."
+
 blocking_findings:
   - finding_id: F1
     source_code: "<audit finding code>"

@@ -1,0 +1,9 @@
+flowchart TD
+  %% Replace placeholders with the real process, exceptions and future branches.
+  Start["Input / source"] --> Collect["Collect records"]
+  Collect --> Decision{"Complete enough?"}
+  Decision -->|Yes| Ready["Ready for next operation"]
+  Decision -->|No| Enrich["Route to enrichment"]
+  Enrich --> Retry{"Completed after enrichment?"}
+  Retry -->|Yes| Ready
+  Retry -->|No| Manual["Manual review or excluded"]

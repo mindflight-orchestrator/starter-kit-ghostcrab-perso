@@ -1,0 +1,5 @@
+flowchart LR
+  %% Required only when post-import audit fails.
+  FindingA["Audit finding A"] --> CategoryA["projection_gap"]
+  CategoryA --> FixA["Target artifact / fix"]
+  FixA --> Retest["Rerun validator and projection audit"]

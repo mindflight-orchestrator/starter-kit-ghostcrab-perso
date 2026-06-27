@@ -13,6 +13,8 @@ It has two control loops:
 - Upstream analysis: use
   `../../ghostcrab-skills/mindbrain-ontology-definition/skill_mindbrain_ontology_explorer_v1.md`
   and the 5-act ontology skills before creating the formal model.
+- Visual modeling: keep Mermaid diagrams under `docs/visuals/` so humans can
+  inspect the domain, process, graph and projection coverage before import.
 - Downstream remediation: when an audit fails, create an explicit remediation
   plan that maps each finding to a model, rule, fake-data, import, or projection
   fix.
@@ -44,6 +46,7 @@ any hard gate is failing or untested.
 | 1 | Import path | `import_path_choices.yaml` | One route selected and compatible with edition |
 | 2 | Model | Ontology/model contract | Main classes, facets, edges, statuses and source contracts declared |
 | 3 | Projections | Projection catalog | Every manager question maps to at least one projection and proof chain |
+| 3.5 | Visual modeling | `docs/visuals/*.mmd` | Domain, process, graph and projection coverage are visible to humans |
 | 4 | Business rules | Rules catalog + rule/projection matrix | Critical rules have triggers, evidence, severity and expected failing cases |
 | 5 | Fake data | Scenarios and import-ready data | Nominal, blocked, incomplete and routed cases are present |
 | 6 | Projection test data | Manager snapshots + evidence matrix | Each expected answer has claims and evidence references |
@@ -69,6 +72,31 @@ This brief is the contract that the formal ontology must satisfy. If the model
 contains classes, relations, rules, or projections that cannot be traced back to
 this exploration, the agent must either update the brief or remove the drift.
 
+## Visual Modeling
+
+Mermaid diagrams are validation artifacts, not decoration. They are required
+because most humans cannot reliably review a MindBrain project from YAML,
+facets and graph rows alone.
+
+Create and maintain:
+
+- `docs/visuals/domain-map.mmd`: domains, actors and JTBD boundaries.
+- `docs/visuals/process-flow.mmd`: real workflow, branches, exceptions and
+  blocked states.
+- `docs/visuals/knowledge-graph.mmd`: main model classes and relationships.
+- `docs/visuals/projection-coverage.mmd`: business questions mapped to
+  projections, rules and evidence.
+
+When an audit fails, also create:
+
+- `docs/visuals/audit-remediation-map.mmd`: every blocking finding mapped to
+  its target fix and retest route.
+
+Diagrams must reference real classes, relations or projections from the current
+project. If a diagram introduces a business branch that is not represented in
+the model, rules, fake data or projections, either update those artifacts or
+mark the branch as an accepted future gap.
+
 ## Hard Gates
 
 The following failures block completion:
@@ -81,6 +109,7 @@ The following failures block completion:
 - A projection exists only as prose and is not represented in the projection
   catalog or answer artifact registry expected by the edition.
 - A business question has no projection, snapshot, or evidence chain.
+- Required Mermaid diagrams are missing, invalid, or stale against the model.
 - A business rule has no trigger or cannot be tested with fake data.
 - Fake data has no nominal case, no blocked case, no incomplete case, or no
   routed-next-action case.
@@ -96,6 +125,7 @@ The following failures block completion:
   facets, projections and artifacts.
 - A failed audit has no remediation plan that maps findings to concrete fixes
   and re-test commands.
+- A failed audit has no visual remediation map for human review.
 
 ## Audit Remediation Loop
 
