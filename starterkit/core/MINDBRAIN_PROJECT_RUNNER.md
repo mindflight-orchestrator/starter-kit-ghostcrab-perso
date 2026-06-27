@@ -10,7 +10,8 @@ proven from current facts.
 
 It has two control loops:
 
-- Upstream analysis: use `../shared/skill_mindbrain_ontology_explorer_v1.md`
+- Upstream analysis: use
+  `../../ghostcrab-skills/mindbrain-ontology-definition/skill_mindbrain_ontology_explorer_v1.md`
   and the 5-act ontology skills before creating the formal model.
 - Downstream remediation: when an audit fails, create an explicit remediation
   plan that maps each finding to a model, rule, fake-data, import, or projection

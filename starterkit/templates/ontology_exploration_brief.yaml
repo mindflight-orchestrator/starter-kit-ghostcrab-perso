@@ -2,9 +2,9 @@ workspace_id: "<workspace-id>"
 project_id: "<project-id>"
 edition: "personal-mcp"
 source_skill:
-  explorer: "../shared/skill_mindbrain_ontology_explorer_v1.md"
-  quickref: "../ghostcrab-skills/mindbrain-ontology-definition/SKILL-Onto-mindBrain-QuickRef.md"
-  builder: "../ghostcrab-skills/mindbrain-ontology-definition/SKILL-Onto-mindBrain.md"
+  explorer: "../../ghostcrab-skills/mindbrain-ontology-definition/skill_mindbrain_ontology_explorer_v1.md"
+  quickref: "../../ghostcrab-skills/mindbrain-ontology-definition/SKILL-Onto-mindBrain-QuickRef.md"
+  builder: "../../ghostcrab-skills/mindbrain-ontology-definition/SKILL-Onto-mindBrain.md"
 
 canonical_reformulation: >
   Tu souhaites modeliser <domain> afin de <goal>, pour les acteurs suivants:
