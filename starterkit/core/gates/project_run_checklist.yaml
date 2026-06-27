@@ -1,0 +1,171 @@
+version: 1
+name: mindbrain_project_runner
+description: Shared hard-gate checklist for GhostCrab / MindBrain project runs.
+
+phases:
+  - id: environment
+    order: 0
+    required: true
+    gate: hard
+    checks:
+      - edition_selected
+      - runtime_explicit
+      - database_explicit
+      - workspace_explicit
+      - status_checked
+
+  - id: ontology_exploration
+    order: 0.5
+    required: true
+    gate: hard
+    checks:
+      - canonical_reformulation_exists
+      - core_problem_exists
+      - actors_and_jtbd_exist
+      - domains_are_mece
+      - clarification_questions_and_decisions_exist
+      - five_acts_capture_exists
+      - canvas_exists
+      - model_traceability_ready
+
+  - id: import_path
+    order: 1
+    required: true
+    gate: hard
+    checks:
+      - import_path_choices_exists
+      - one_import_route_selected
+      - route_compatible_with_edition
+
+  - id: model
+    order: 2
+    required: true
+    gate: hard
+    checks:
+      - ontology_or_model_contract_exists
+      - entity_types_declared
+      - facets_declared
+      - edges_declared
+      - status_enums_declared
+      - source_contracts_declared
+
+  - id: projections
+    order: 3
+    required: true
+    gate: hard
+    checks:
+      - projection_catalog_exists
+      - manager_questions_declared
+      - every_question_has_projection
+      - every_projection_has_required_facets
+      - every_projection_has_proof_chain
+
+  - id: business_rules
+    order: 4
+    required: true
+    gate: hard
+    checks:
+      - business_rules_catalog_exists
+      - every_rule_has_trigger
+      - every_rule_has_severity
+      - every_rule_maps_to_projection_or_business_question
+      - every_critical_rule_has_negative_test_case
+
+  - id: fake_data
+    order: 5
+    required: true
+    gate: hard
+    checks:
+      - scenario_data_exists
+      - nominal_case_exists
+      - blocked_case_exists
+      - incomplete_case_exists
+      - routed_next_action_case_exists
+      - every_edge_references_existing_nodes
+
+  - id: projection_test_data
+    order: 6
+    required: true
+    gate: hard
+    checks:
+      - answer_snapshots_declared
+      - snapshot_claims_have_evidence
+      - evidence_entities_exist_in_scenario_or_db
+
+  - id: review_finalisation
+    order: 7
+    required: true
+    gate: soft
+    checks:
+      - review_dossier_exists
+      - unresolved_decisions_listed
+
+  - id: import
+    order: 8
+    required: true
+    gate: hard
+    checks:
+      - facts_imported
+      - graph_imported
+      - projections_registered
+      - answer_artifacts_registered
+      - gap_rules_registered
+      - reindex_completed
+
+  - id: post_import_audit
+    order: 9
+    required: true
+    gate: hard
+    checks:
+      - no_orphan_relations
+      - expected_facts_present
+      - expected_projections_present
+      - expected_answer_artifacts_present
+      - business_questions_answerable
+
+  - id: audit_remediation
+    order: 10
+    required: when_post_import_audit_fails
+    gate: hard
+    checks:
+      - remediation_plan_exists
+      - every_blocking_finding_classified
+      - every_blocking_finding_has_target_artifact
+      - every_blocking_finding_has_fix_action
+      - every_blocking_finding_has_retest_command
+      - acceptance_criteria_exist
+
+critical_case_tags:
+  nominal:
+    description: A normal happy-path case that should pass.
+  blocked:
+    description: A case that must stop and explain why.
+  incomplete:
+    description: A case with missing data that must route to completion.
+  routed_next_action:
+    description: A case that proves the agent can recommend a next action.
+
+remediation_categories:
+  analysis_gap:
+    description: The upstream exploration missed a domain, actor, JTBD, question, or decision.
+  model_gap:
+    description: The ontology/model contract misses a class, facet, edge, enum, or source contract.
+  rule_gap:
+    description: Rules are absent, disconnected, untestable, or weakly specified.
+  fake_data_gap:
+    description: Scenario data does not cover the required nominal, blocked, incomplete, or routed cases.
+  import_gap:
+    description: Expected facts, graph rows, rules, projections, or artifacts were not materialized.
+  projection_gap:
+    description: A business question lacks a registered projection or proof chain.
+  answer_artifact_gap:
+    description: A live answer view, answer snapshot, or evidence artifact is missing.
+  graph_gap:
+    description: Graph nodes, edges, event chains, or relation cardinality are incomplete.
+
+minimums:
+  facets_per_critical_entity_type: 3
+  projection_count: 1
+  business_rule_count: 1
+  scenario_node_count: 1
+  scenario_edge_count: 1

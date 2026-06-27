@@ -1,5 +1,23 @@
 # GhostCrab MCP StarterKit — Claude Code Entrypoint
 
+## Runner contract
+
+Read `../core/MINDBRAIN_PROJECT_RUNNER.md` and
+`../core/gates/project_run_checklist.yaml` before starting a new GhostCrab /
+MindBrain workspace. This file is only the Claude Code adapter; the shared
+runner is the source of truth for hard gates.
+
+Before declaring completion, run:
+
+```bash
+python ../scripts/validate_mindbrain_project.py \
+  --project <project-dir> \
+  --workspace <workspace-id> \
+  --edition <personal-mcp|pro-mcp>
+```
+
+For GhostCrab Pro, include the projection audit JSON with `--projection-audit`.
+
 ## Default: personal-mcp
 
 1. Read `../EDITIONS.md` (Pro only if user asks)

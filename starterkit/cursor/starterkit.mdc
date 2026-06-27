@@ -5,6 +5,24 @@ alwaysApply: true
 
 # GhostCrab MCP StarterKit
 
+## Runner contract
+
+Read `starterkit/core/MINDBRAIN_PROJECT_RUNNER.md` and
+`starterkit/core/gates/project_run_checklist.yaml` before starting or completing
+a GhostCrab / MindBrain workspace. This Cursor rule is an adapter; the shared
+runner is the source of truth for hard gates.
+
+Before declaring completion, run:
+
+```bash
+python starterkit/scripts/validate_mindbrain_project.py \
+  --project <project-dir> \
+  --workspace <workspace-id> \
+  --edition <personal-mcp|pro-mcp>
+```
+
+For GhostCrab Pro, include the projection audit JSON with `--projection-audit`.
+
 ## Default edition: personal-mcp
 
 1. Read `starterkit/EDITIONS.md` (switch to Pro only if explicit)

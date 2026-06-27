@@ -1,0 +1,91 @@
+workspace_id: "<workspace-id>"
+project_id: "<project-id>"
+edition: "personal-mcp"
+source_skill:
+  explorer: "../shared/skill_mindbrain_ontology_explorer_v1.md"
+  quickref: "../ghostcrab-skills/mindbrain-ontology-definition/SKILL-Onto-mindBrain-QuickRef.md"
+  builder: "../ghostcrab-skills/mindbrain-ontology-definition/SKILL-Onto-mindBrain.md"
+
+canonical_reformulation: >
+  Tu souhaites modeliser <domain> afin de <goal>, pour les acteurs suivants:
+  <actors>.
+
+core_problem: "<What fundamental problem must this model solve?>"
+
+actors:
+  - actor_id: operator
+    label: "Operators"
+    jtbd: "<What operators need to accomplish>"
+    current_blockers: []
+    required_information: []
+  - actor_id: user
+    label: "Users"
+    jtbd: "<What business users need to accomplish>"
+    current_blockers: []
+    required_information: []
+  - actor_id: ai_agent
+    label: "AI agents"
+    jtbd: "<What agents need to understand, decide or execute>"
+    current_blockers: []
+    required_information: []
+
+domains:
+  - domain_id: "<domain-1>"
+    label: "<Domain name>"
+    boundary: "<What this domain covers and excludes>"
+    jtbd_addressed: []
+    candidate_entities: []
+    mece_notes: "<Why this domain does not overlap others>"
+
+clarification_questions:
+  - question_id: Q1
+    dimension: "<Dimension that changes the ontology>"
+    question: "<Precise question>"
+    impact_if_yes: "<What this adds>"
+    impact_if_no: "<What this simplifies>"
+    decision: "<answered yes/no/unknown>"
+
+five_acts:
+  noms:
+    - name: "<Business noun>"
+      spontaneous_attributes: []
+      countable: true
+  verbes:
+    - subject: "<Name A>"
+      verb: "<Business verb>"
+      object: "<Name B>"
+      context: ""
+      verb_type: "action"
+  qualificatifs:
+    - name: "<Business noun>"
+      dimensions:
+        - name: "status"
+          values: []
+          type: "enum"
+  conditions:
+    - condition_id: C1
+      if: "<state + context + trigger>"
+      then: "<action or new state>"
+      priority: "normal"
+  recherche:
+    - name: "<Business noun>"
+      facets:
+        par_qui: []
+        par_quand: []
+        par_ou: []
+        par_etat: []
+        par_combien: []
+        par_type: []
+
+canvas:
+  - who_or_what: "<Business noun>"
+    knows_about_itself: []
+    linked_to: []
+    can_do_or_suffer: []
+
+model_traceability:
+  expected_classes: []
+  expected_edges: []
+  expected_facets: []
+  expected_rules: []
+  expected_projections: []

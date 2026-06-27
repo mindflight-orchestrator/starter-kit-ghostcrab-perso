@@ -2,6 +2,18 @@
 
 **Trigger:** GhostCrab, mindBrain, ontology, vault ingestion, new GhostCrab project.
 
+## Runner contract
+
+This Codex skill is an adapter for the shared MindBrain project runner. Before
+starting a new GhostCrab / MindBrain workspace, read:
+
+1. `../core/MINDBRAIN_PROJECT_RUNNER.md`
+2. `../core/gates/project_run_checklist.yaml`
+
+The run is not complete until the runner hard gates pass. Do not describe a
+workspace as ready when facts, graph, projections, answer artifacts, business
+rules, or business-question evidence are missing.
+
 ## How to use
 
 1. Read `../EDITIONS.md`.
@@ -9,6 +21,16 @@
 3. **Pro:** `../pro-mcp/ROUTE_MAP.md` + `../pro-mcp/SOP_SEQUENCE.md`
 4. Use the chosen folder's `SOP_SEQUENCE.md` as the source of truth. SOP0–SOP6 are not sufficient by themselves; transverse SOPs such as business rules, projection test data and review finalisation are mandatory when their phase appears.
 5. Never load the other edition folder on the same run.
+6. Run the shared validator before declaring completion:
+
+```bash
+python ../scripts/validate_mindbrain_project.py \
+  --project <project-dir> \
+  --workspace <workspace-id> \
+  --edition <personal-mcp|pro-mcp>
+```
+
+For GhostCrab Pro, pass the JSON report from `../scripts/audit_ghostcrab_projections.py` with `--projection-audit`.
 
 ## Expected work spine
 
@@ -28,6 +50,23 @@ Follow this spine for any new GhostCrab / MindBrain workspace, unless the user e
 | 9 | Post-import audit | Do projections and snapshots really answer through current facts, graph, facets and artifacts? | projection audit route + import gates | search, pack, combined search, projection_get, artifact audit OK |
 
 Do not jump from ontology work directly to fake-data or import. B1, B1.5 and B2.5 are gates: fake-data must cover selected business questions, business rules, and manager-oriented answer evidence.
+
+## Hard gates
+
+These conditions block completion:
+
+- Edition, runtime, DB, or workspace is unclear.
+- A required phase from the work spine is skipped.
+- A manager/business question has no projection or evidence chain.
+- A projection has required facets that are absent from the model and scenario.
+- A business rule has no trigger/source condition.
+- Fake-data does not include nominal, blocked, incomplete, and routed-next-action cases.
+- An edge references a missing node.
+- Post-import audit finds orphan graph relations.
+- Post-import audit shows expected facts, projections, answer artifacts, or snapshots are missing.
+- `AgentNextActionView` or the project-equivalent next-action view cannot answer from current data.
+
+If a hard gate fails, stop calling the run complete and report the next required action.
 
 ## Rules
 

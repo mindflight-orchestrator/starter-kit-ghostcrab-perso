@@ -1,0 +1,29 @@
+workspace_id: "<workspace-id>"
+project_id: "<project-id>"
+edition: "personal-mcp"
+audit:
+  report_path: "<path/to/audit.json>"
+  audit_date: "<YYYY-MM-DD>"
+  status: "FAIL"
+
+blocking_findings:
+  - finding_id: F1
+    source_code: "<audit finding code>"
+    message: "<audit finding message>"
+    category: "projection_gap"
+    severity: "error"
+    root_cause: "<analysis_gap|model_gap|rule_gap|fake_data_gap|import_gap|projection_gap|answer_artifact_gap|graph_gap>"
+    target_artifacts:
+      - "<file or MCP/DB artifact to update>"
+    fix_actions:
+      - "<concrete action>"
+    retest_commands:
+      - "python starterkit/scripts/validate_mindbrain_project.py --project <project-dir> --workspace <workspace-id> --edition <edition>"
+    acceptance_criteria:
+      - "<measurable PASS condition>"
+    owner: "<human-or-agent-owner>"
+    status: "todo"
+
+summary:
+  next_required_action: "<first action to unblock the run>"
+  accepted_gaps: []

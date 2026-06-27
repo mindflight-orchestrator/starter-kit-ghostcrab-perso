@@ -2,6 +2,26 @@
 
 **Trigger:** GhostCrab, mindBrain, ontology, vault ingestion, new GhostCrab project.
 
+## Runner contract
+
+This Claude Code skill is an adapter for the shared MindBrain project runner.
+Before starting or completing a GhostCrab / MindBrain workspace, read:
+
+1. `../core/MINDBRAIN_PROJECT_RUNNER.md`
+2. `../core/gates/project_run_checklist.yaml`
+
+Do not declare a run complete while any hard gate fails. Use the shared
+validator before final status:
+
+```bash
+python ../scripts/validate_mindbrain_project.py \
+  --project <project-dir> \
+  --workspace <workspace-id> \
+  --edition <personal-mcp|pro-mcp>
+```
+
+For GhostCrab Pro, pass the projection audit JSON with `--projection-audit`.
+
 ## Default: personal-mcp
 
 1. Read `../EDITIONS.md`.
