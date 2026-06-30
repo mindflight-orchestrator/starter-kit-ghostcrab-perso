@@ -1,0 +1,59 @@
+# GhostCrab Pro process workflow catalog template.
+# Use after B1 projections and B1.5 business rules are validated.
+# Personal boundary: this template is Pro-only and maps selected actionable
+# rules to mb_process runtime workflows.
+
+edition: pro-mcp
+workspace_id: "<workspace_id>"
+process_runtime: mb_process
+
+workflows:
+  - id: "<domain>.<workflow_slug>"
+    source_rule_id: "<rules/business_rules_catalog.yaml rule id>"
+    projection_refs:
+      - "<projection_id>"
+    purpose: "<why this rule should emit an action/event, not only answer>"
+
+    process:
+      process_key: "<process_key>"
+      process_version: "v0"
+
+    event_type:
+      key: "<event.type>"
+      schema_ref: "<optional JSON schema or contract>"
+      consumer: "<human role, agent, queue, or downstream system>"
+
+    process_rule:
+      rule_id: "<rule.id>"
+      trigger_kind: "rule_state" # manual | rule_state | event | schedule
+      operation_kind: "emit_event"
+      idempotency_key: "<stable idempotency key>"
+
+    trigger:
+      trigger_id: "<process.trigger.id>"
+      provenance_kind: "graph_rule_state" # always | never | process_rule_enabled | graph_rule_state | entity_exists
+      provenance:
+        workspace_id: "<workspace_id>"
+        rule_id: "<graph_or_business_rule_id>"
+        state: "invalid"
+      scope:
+        workspace_id: "<workspace_id>"
+      source: "operator"
+
+    safety:
+      firing_mode: "explicit_or_scheduled"
+      owner: "<human_or_agent_owner>"
+      stop_condition: "<when trigger should become stale or disabled>"
+      managed_dispatch: false
+      managed_dispatch_note: "Experimental; only enable with whitelist and operator review."
+
+    tests:
+      smoke:
+        - "<positive_fire_case>"
+      stale_or_skip:
+        - "<condition_disappears_case>"
+      reactivation:
+        - "<condition_returns_case>"
+
+    status: draft
+    model_gaps: []

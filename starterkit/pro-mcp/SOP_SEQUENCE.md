@@ -12,7 +12,7 @@ Pour changer de piste : [../EDITIONS.md](../EDITIONS.md).
 
 ## How to use
 
-1. Phases **in order** (A → B0 → B → **B1** → **Visual modeling** → **B1.5** → **B2** → C / C2).
+1. Phases **in order** (A → B0 → B → **B1** → **Visual modeling** → **B1.5** → **B1.6 mb_process** → **B2** → C / C2).
 2. Load **only** files in this folder + `../templates/` + `../scripts/`.
 3. `edition: pro-mcp` in `../templates/import_manifest.yaml`.
 
@@ -24,11 +24,12 @@ flowchart LR
   B1[Phase B1 projections]
   V[Visual modeling]
   B15[Phase B1.5 rules]
+  B16[Phase B1.6 mb_process workflows]
   B2[Phase B2 fake-data]
   C3[Phase C SOP3]
   C6[Phase C opt SOP6]
   C2[Phase C2 SOP5]
-  A --> B0 --> B --> B1 --> V --> B15 --> B2
+  A --> B0 --> B --> B1 --> V --> B15 --> B16 --> B2
   B2 --> C3
   B2 --> C6
   B2 --> C2
@@ -43,11 +44,14 @@ flowchart LR
 | 2 | B1 projections | Which manager questions and proof chains must be answerable? | `artifact_kind`, `proj_type`, scopes, evidence needs reviewed |
 | 3 | Visual modeling | Can humans understand the domain, process, graph and projection coverage? | `docs/visuals/domain-map.mmd`, `process-flow.mmd`, `knowledge-graph.mmd`, `projection-coverage.mmd` reference real model/projection objects |
 | 4 | B1.5 rules | Which assertions, calculations, deadlines, transitions, and forbidden states consume or complete B1? | `rules/business_rules_catalog.yaml` + rule-to-projection coverage matrix |
-| 5 | B2 fake-data | Which scenarios prove B1 and B1.5? | `fake_data/` + `import_ready/` cover questions and rules |
-| 6 | Import | Which Pro COPY/import path applies? | COPY/import + reindex done against `DATABASE_URL` |
-| 7 | Audit | Do MCP and mindCLI consumers answer from current facts/graph? | `ghostcrab_pack`, search, mindCLI pragma, and projection audit OK |
+| 5 | B1.6 process runtime | Which actionable rules should become process rules, triggers, outbox events and guarded workflows? | `process_workflow_catalog.yaml` or equivalent design maps rule -> process_rule -> trigger provenance -> event/outbox |
+| 6 | B2 fake-data | Which scenarios prove B1, B1.5 and B1.6? | `fake_data/` + `import_ready/` cover questions, rules and process trigger cases |
+| 7 | Import | Which Pro COPY/import path applies? | COPY/import + reindex done against `DATABASE_URL` |
+| 8 | Audit | Do MCP, mindCLI and process consumers answer and fire from current facts/graph? | projection audit OK; process rules/triggers/outbox smoke OK when B1.6 is in scope |
 
-Do not start B2 until B1 and B1.5 have named the business questions, evidence chains, and rule assertions the data must prove.
+Do not start B2 until B1, B1.5 and any in-scope B1.6 workflows have named the
+business questions, evidence chains, rule assertions, trigger provenance and
+event/outbox behavior the data must prove.
 
 Do not start B1.5 until the required Mermaid diagrams in `docs/visuals/` make
 the domain, workflow branches, knowledge graph and projection coverage readable
@@ -116,6 +120,20 @@ Rules consume and complete projections: they define what fake-data must prove an
 
 ---
 
+## Phase B1.6 — mb_process runtime workflows
+
+| Step | Document / tool | Done when |
+|------|-------------------|-----------|
+| B1.6 design | [SOP7_mb_process_workflows.md](SOP7_mb_process_workflows.md), validated B1/B1.5 artifacts | selected actionable rules map to process rules, event types, trigger provenance and outbox consumers |
+| B1.6 safety | `ghostcrab_process_*` feature probes, operator review | explicit/scheduled firing path chosen; managed dispatch is marked experimental if used |
+| B1.6 audit | `ghostcrab_process_rules_list`, `ghostcrab_process_triggers_list`, outbox smoke | process runtime can be inspected, fired, reconciled and audited in workspace scope |
+
+Pro extends Personal levels 1-3 with levels 4-5: actionable business rules and
+workflow orchestration. Do not promote every rule. Promote only rules whose
+action, owner, idempotency, provenance and stop condition are explicit.
+
+---
+
 ## Phase B2 — Fake business data
 
 | Step | Document / tool | Done when |
@@ -174,5 +192,6 @@ See `../../docs/3.modules/3.2.mindbrain-mindcli.md`.
 | SOP4 | [SOP4_environment_bootstrap.md](SOP4_environment_bootstrap.md) | A |
 | SOP5 | [SOP5_source_import_compiler.md](SOP5_source_import_compiler.md) | C2 |
 | SOP6 | [SOP6_document_import.md](SOP6_document_import.md) | C (opt.) |
+| SOP7 | [SOP7_mb_process_workflows.md](SOP7_mb_process_workflows.md) | B1.6 |
 
 Parcours Pro autonome — [ROUTE_MAP.md](ROUTE_MAP.md).

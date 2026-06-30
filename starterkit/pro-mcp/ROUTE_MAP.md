@@ -20,7 +20,8 @@
 | Phase B — specs OK | **Préparer projections** | [§ Route projections](#route-projections) + `../scripts/README_projection_tools.md` |
 | Projections validées | Matérialiser + auditer pragma | `ghostcrab_project` + mindCLI `mb_pragma` |
 | Phase B1 done | **Cataloguer règles métier** | [§ Règles métier B1.5](#route-regles-metier-b15) + `../templates/business_rules_catalog.yaml` |
-| Phase B1.5 done | **Générer fake-data métier** | [§ Données fictives B2](#route-donnees-fictives-metier) |
+| Phase B1.5 done | **Concevoir workflows runtime** | [§ mb_process B1.6](#route-mb_process-workflows-b16) + [SOP7](SOP7_mb_process_workflows.md) |
+| Phase B1.6 done | **Générer fake-data métier** | [§ Données fictives B2](#route-donnees-fictives-metier) |
 | Fake-data prêtes | Import COPY / compiler | [SOP5](SOP5_source_import_compiler.md) |
 | Phase B done | Vault Obsidian | [SOP3](SOP3_parsing_pipeline.md) → COPY |
 | Corpus docs plats | COPY documents | [SOP6](SOP6_document_import.md) |
@@ -37,7 +38,8 @@ flowchart LR
   SOP0 --> SOP1B[Phase B SOP1+SOP2]
   SOP1B --> SOP1proj[Phase B1 projections]
   SOP1proj --> SOP15rules[Phase B1.5 rules]
-  SOP15rules --> SOP2fake[Phase B2 fake-data]
+  SOP15rules --> SOP16process[Phase B1.6 mb_process]
+  SOP16process --> SOP2fake[Phase B2 fake-data]
   SOP2fake --> SOP5C2[Phase C2 SOP5 COPY]
   SOP2fake --> SOP3[Phase C SOP3 vault]
   SOP1B --> SOP6[Phase C opt SOP6 docs]
@@ -52,7 +54,8 @@ flowchart LR
 | B | SOP1 + SOP2 | MCP DDL + ontologie | inspect + coverage baseline |
 | **B1** | scripts + mindCLI | candidats + catalogue pragma | `mb_pragma projections list` OK |
 | **B1.5** | règles métier | assertions + chaînes de preuve + projection refs | règles critiques couvertes ou gap accepté |
-| **B2** | fake-data métier | CSV + COPY-ready migrations | dry-run gates 0–4 OK |
+| **B1.6** | `mb_process` workflows | process rules + trigger provenance + outbox contract | process smoke/reconcile plan OK |
+| **B2** | fake-data métier | CSV + COPY-ready migrations | dry-run gates 0–4 OK + process trigger cases if B1.6 in scope |
 | C | SOP3 | parsing → COPY | coverage ≥ 80 % |
 | C (opt.) | SOP6 | COPY corpus docs + mindCLI | audit pragma OK |
 | C2 | SOP5 | scripts + COPY + mindCLI | consumers OK |
@@ -181,6 +184,50 @@ projection_model_validation.md
 
 ---
 
+## Route mb_process workflows B1.6
+
+`mb_process` est la couche Pro qui transforme certaines règles actionnables en
+processus runtime auditable. Le passage est:
+
+```text
+projection validee
+  -> business rule / actionable state
+  -> mb_process.process_rule
+  -> event_type
+  -> process_trigger provenance
+  -> events_outbox
+  -> consumer / workflow step
+```
+
+**SOP:** [SOP7_mb_process_workflows.md](SOP7_mb_process_workflows.md)
+
+### Done when
+
+- chaque workflow part d'une projection ou règle B1/B1.5 validée ;
+- l'action attendue, le propriétaire humain/agent et le stop condition sont explicites ;
+- le `provenance_kind` est choisi (`graph_rule_state`, `entity_exists`, `process_rule_enabled`, etc.) ;
+- l'idempotency key et la stratégie de réactivation sont définies ;
+- l'outbox event a un consommateur ou une raison d'être claire ;
+- le mode de firing est explicite: manuel, planifié, event/rule-state ; managed dispatch reste expérimental.
+
+### Audit
+
+Utiliser les surfaces MCP Pro quand elles existent:
+
+- `ghostcrab_process_rules_import`
+- `ghostcrab_process_rules_list`
+- `ghostcrab_process_rules_evaluate`
+- `ghostcrab_process_triggers_register`
+- `ghostcrab_process_triggers_list`
+- `ghostcrab_process_triggers_reconcile`
+- `ghostcrab_process_triggers_fire`
+
+Ne pas confondre trigger descriptif dans `business_rules_catalog.yaml` et
+trigger runtime `mb_process`. Le premier explique et teste. Le second peut
+émettre un événement durable dans `mb_process.events_outbox`.
+
+---
+
 ## Route données fictives métier (Phase B2)
 
 Même objectif que Personal : valider modèle + graphe + projections **sans CRM/API réel**.
@@ -192,11 +239,13 @@ Même objectif que Personal : valider modèle + graphe + projections **sans CRM/
 ```text
 model_contract.json
   → fake_data/*.csv + import_ready/
+  → scenarios for B1 answers, B1.5 assertions, and B1.6 trigger provenance
   → profile_source.mjs + validate_mapping + transform_source_to_jsonb
   → generate_copy_migrations.mjs (ou plan import_facets.mjs)
   → COPY PostgreSQL (hot-path SQL — pas MCP bulk)
   → mindCLI mb_pragma + ghostcrab_coverage
   → matérialiser projections B1
+  → smoke `mb_process` rules/triggers if B1.6 is in scope
 ```
 
 ### Sorties
@@ -244,6 +293,7 @@ projection_audit: mindcli
 | **Projections — préparer** | `analyze_projection_candidates.py` |
 | **Projections — écrire** | `ghostcrab_project` ou SQL (bulk COPY) |
 | **Projections — auditer (perf.)** | mindCLI `mb_pragma` + `audit_ghostcrab_projections.py` |
+| **Process workflows — concevoir** | [SOP7_mb_process_workflows.md](SOP7_mb_process_workflows.md), `ghostcrab_process_*` |
 | **Fake-data métier (B2)** | gates StarterKit + COPY / `generate_copy_migrations.mjs` |
 | Bulk ingest | SQL COPY, `generate_copy_migrations.mjs`, pgx/psycopg2 |
 | Dry-run gates | `../scripts/*.mjs` |
@@ -277,10 +327,11 @@ Même ordre que SOP2 Annexe A dans `../templates/`. Clôture : `import_manifest.
 3. [SOP1](SOP1_ghostcrab_mcp.md) + [SOP2](SOP2_obsidian_ontologie.md)
 4. **Projections** : [§ Route projections](ROUTE_MAP.md#route-projections)
 5. **Règles métier (B1.5)** : [§ Règles métier](ROUTE_MAP.md#route-regles-metier-b15)
-6. **Fake-data (B2)** : [§ Données fictives](ROUTE_MAP.md#route-donnees-fictives-metier)
-7. [SOP5](SOP5_source_import_compiler.md) — COPY + mindCLI
-8. [SOP3](SOP3_parsing_pipeline.md) / [SOP6](SOP6_document_import.md) si corpus doc
-9. Audit : `audit_ghostcrab_projections.py` + gate 9
+6. **Workflows runtime (B1.6)** : [§ mb_process](ROUTE_MAP.md#route-mb_process-workflows-b16)
+7. **Fake-data (B2)** : [§ Données fictives](ROUTE_MAP.md#route-donnees-fictives-metier)
+8. [SOP5](SOP5_source_import_compiler.md) — COPY + mindCLI
+9. [SOP3](SOP3_parsing_pipeline.md) / [SOP6](SOP6_document_import.md) si corpus doc
+10. Audit : `audit_ghostcrab_projections.py` + gate 9 + process runtime audit if B1.6 is in scope
 
 ---
 
@@ -295,5 +346,6 @@ Même ordre que SOP2 Annexe A dans `../templates/`. Clôture : `import_manifest.
 | SOP4 | [SOP4_environment_bootstrap.md](SOP4_environment_bootstrap.md) | A |
 | SOP5 | [SOP5_source_import_compiler.md](SOP5_source_import_compiler.md) | C2 |
 | SOP6 | [SOP6_document_import.md](SOP6_document_import.md) | C (opt.) |
+| SOP7 | [SOP7_mb_process_workflows.md](SOP7_mb_process_workflows.md) | B1.6 |
 
 Parcours Pro complet et autonome — ne pas charger `../personal-mcp/` sur une base Pro.

@@ -26,6 +26,14 @@ those objects.
 Without this phase, fake data may look plausible but fail to cover the real
 manager questions and operational exceptions.
 
+**Personal boundary:** fields such as `trigger`, `state_transition`,
+`workflow`, or `scenarios` are descriptive test/modeling fields. They help
+generate fake data, projection tests and audit evidence. They are not
+`mb_process` runtime triggers. To execute selected rules as action workflows,
+migrate the validated catalog to GhostCrab Pro and design
+`mb_process.process_rules`, `process_triggers`, event types and outbox
+consumers.
+
 ---
 
 ## 2. Inputs
@@ -140,3 +148,7 @@ Next phase:
 1. [SOP_projection_test_data_levels.md](SOP_projection_test_data_levels.md) to decide how smoke / mini / scale will prove the rules and snapshots.
 2. [../scripts/README_fake_business_data.md](../scripts/README_fake_business_data.md) to generate deterministic import-ready data.
 3. [SOP_review_finalisation_dossier.md](SOP_review_finalisation_dossier.md) to collect the catalog for human validation.
+
+Future Pro path: once Personal proves the model, projections and rule coverage,
+GhostCrab Pro can promote selected rules into PostgreSQL `mb_process` runtime
+workflows.

@@ -8,6 +8,23 @@
 
 **Do not use:** mindCLI, PostgreSQL COPY, `../pro-mcp/`, `generate_copy_migrations.mjs`.
 
+## Scope boundary
+
+GhostCrab Personal covers levels 1-3:
+
+1. dimensions / facets;
+2. semantic graph edges;
+3. business questions -> projections -> auditable answers.
+
+Personal may document business rules, triggers, blocked states and workflow
+branches as modeling and validation artifacts. These fields help prove that
+the model, projections, fake data and answer snapshots are correct. They do
+not run autonomous process workflows.
+
+Levels 4-5 belong to GhostCrab Pro / PostgreSQL: actionable business rules,
+`mb_process` process rules, dynamic triggers, events outbox, managed dispatch
+and autonomous workflow orchestration.
+
 **Product references (sibling clone):**
 
 | Doc | Path |
@@ -57,7 +74,7 @@ flowchart LR
 | 2 | B model | Which classes, facets, edges, LinkML modules, schemas and import contracts exist? | model contract + ontology path + schema activation validated |
 | 3 | B1 projections | Which manager questions and proof chains must be answerable? | `artifact_kind`, `proj_type`, scopes, evidence needs reviewed |
 | 4 | Visual modeling | Can humans understand the domain, process, graph and projection coverage? | `docs/visuals/domain-map.mmd`, `process-flow.mmd`, `knowledge-graph.mmd`, `projection-coverage.mmd` reference real model/projection objects |
-| 5 | B1.5 rules | Which assertions, calculations, deadlines, transitions, and forbidden states consume or complete B1? | `rules/business_rules_catalog.yaml` + rule-to-projection coverage matrix |
+| 5 | B1.5 rules | Which assertions, calculations, deadlines, transitions, and forbidden states consume or complete B1 as evidence? | `rules/business_rules_catalog.yaml` + rule-to-projection coverage matrix |
 | 6 | B2 fake-data | Which scenarios prove B1 and B1.5? | `fake_data/` + `import_ready/` cover questions and rules |
 | 7 | B2.5 projection test data | Which manager snapshots, claims, evidence and assertions prove the projections? | snapshot reports + `claim -> evidence -> assertion` matrix generated |
 | 8 | Review finalisation | Which strategic documents must humans validate, and in what order? | `finalisation/<workspace_id>/current/00_INDEX.md` generated |
@@ -131,7 +148,9 @@ process in these diagrams, the model is not ready for rules, fake data or import
 | B1.5 catalog | [SOP_business_rules_catalog.md](SOP_business_rules_catalog.md), `../templates/business_rules_catalog.yaml`, B1 `projection_model_validation.md` | `rules/business_rules_catalog.yaml` records assertions, scenarios, evidence chains, and projection refs |
 | B1.5 coverage | rule-to-projection matrix | critical rules are covered by B1 scopes or marked as accepted model gaps |
 
-Rules consume and complete projections: they define what fake-data must prove and what post-import audits must check.
+Rules consume and complete projections: in Personal they define what fake-data
+must prove and what post-import audits must check. They do not create runtime
+triggers, outbox events or autonomous action chains.
 
 ---
 

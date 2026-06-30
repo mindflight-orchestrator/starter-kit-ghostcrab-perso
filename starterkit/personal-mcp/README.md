@@ -2,6 +2,10 @@
 
 GhostCrab Personal — SQLite, `gcp brain …`, MCP `ghostcrab_*`.
 
+Personal covers facets, graph, projections and auditable answers. It can model
+business rules as evidence and test scenarios, but runtime triggers, outbox
+events and autonomous workflows are Pro / PostgreSQL concerns.
+
 **Start here:**
 
 - [ROUTE_MAP.md](ROUTE_MAP.md) — plan de routes du workflow complet

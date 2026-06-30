@@ -180,6 +180,13 @@ Puis gate 9 : `../scripts/audit_import_pipeline.mjs` + `validate_consumer_contra
 
 Les règles métier sont le pont entre les projections B1 et les données B2 : elles disent ce qui doit être vrai, calculé, interdit, déclenché, justifié ou expliqué.
 
+**Limite Personal :** ici, les règles sont analytiques et probatoires. Elles
+décrivent des conditions, assertions, états interdits, branches de workflow et
+chaînes de preuve pour tester les projections. Elles ne créent pas de
+`mb_process.process_rules`, triggers runtime, événements outbox ou chaînes
+d'action autonomes. La promotion de règles sélectionnées vers un moteur
+d'action appartient à GhostCrab Pro / PostgreSQL.
+
 **Template:** [../templates/business_rules_catalog.yaml](../templates/business_rules_catalog.yaml)
 
 **SOP:** [SOP_business_rules_catalog.md](SOP_business_rules_catalog.md)
@@ -200,6 +207,8 @@ projection_model_validation.md
 - chaque règle critique pointe vers une projection B1 ou un `model_gap` accepté ;
 - les chaînes de preuve listent objets, facettes, arêtes et artifact_kind attendus ;
 - B2 sait quels scénarios smoke / mini / scale générer.
+- les champs `trigger`, `state_transition` ou `scenario` restent des champs de
+  modélisation/test, pas des déclencheurs exécutés.
 
 ---
 
@@ -336,6 +345,11 @@ document_path: gcp_document
 | Audit agent | MCP search, pack, coverage |
 
 **Interdit:** mindCLI, COPY, `generate_copy_migrations.mjs`, `DATABASE_URL` Pro.
+
+**Upgrade path Pro :** quand Personal a prouvé les niveaux 1-3 (facettes,
+graphe, projections/réponses) et stabilisé les règles métier, Pro peut
+promouvoir certaines règles vers les niveaux 4-5 : règles actionnables,
+`mb_process` triggers, outbox et workflows autonomes contrôlés.
 
 ---
 

@@ -11,7 +11,7 @@ GhostCrab Pro — PostgreSQL, Docker, COPY, MCP, **mindCLI**.
 
 **Canonical checklist:** [SOP_SEQUENCE.md](SOP_SEQUENCE.md)
 
-**Main SOP set (this folder):** SOP0, SOP1, SOP2, SOP3, SOP4, SOP5, SOP6
+**Main SOP set (this folder):** SOP0, SOP1, SOP2, SOP3, SOP4, SOP5, SOP6, SOP7
 
 **Self-contained:** do not load `../personal-mcp/` or root `SOP*.md` stubs on a Pro database.
 
