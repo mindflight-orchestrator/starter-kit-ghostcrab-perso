@@ -1,0 +1,4 @@
+interface:
+  display_name: "GhostCrab Process Workflow Designer"
+  short_description: "Design Pro mb_process workflows."
+  default_prompt: "Use $ghostcrab-process-workflow-designer to design a GhostCrab Pro mb_process workflow from validated projections and business rules."
